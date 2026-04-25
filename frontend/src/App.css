@@ -1,0 +1,2533 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ELD TRIP PLANNER — DESIGN SYSTEM
+   ───────────────────────────────────────────────────────────────────────────
+   Philosophy: precision instrumentation for logistics/compliance.
+   High information density · restrained color · zero decorative noise.
+   Every token answers: "does this help the user read the data faster?"
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+
+  /* ── Surfaces (depth via background, not shadow) ──────────────────────── */
+  --c-bg:        #0b0d14;   /* page floor */
+  --c-surface:   #13161f;   /* primary panels: sidebar, tab bar, header */
+  --c-surface2:  #1c2030;   /* cards, inputs, table rows */
+  --c-surface3:  #242840;   /* hover, active row, selected */
+  --c-border:    #2a2f45;   /* primary 1px border */
+  --c-border-s:  #1e2235;   /* subtle separator — row dividers, section breaks */
+
+  /* ── Text (3 levels, no more) ─────────────────────────────────────────── */
+  --c-text:      #dde3ef;   /* primary: data values, headings */
+  --c-text-2:    #9aa3b8;   /* secondary: descriptions, details */
+  --c-muted:     #6b7590;   /* tertiary: labels, placeholders, disabled */
+
+  /* ── Accent palette ───────────────────────────────────────────────────── */
+  /* Rule: accent colors are for status and data, not decoration.            */
+  /* Never use as solid backgrounds — use 8% tints for banners only.        */
+  --c-accent:    #4f8ef7;   /* interactive: links, active states, focus */
+  --c-accent-h:  #3b7de8;   /* hover variant */
+  --c-accent-dim: rgba(79,142,247,.08);
+  --c-success:   #0ea572;   /* pickup, dropoff, positive status */
+  --c-warn:      #e8960a;   /* cycle warnings, fuel, caution */
+  --c-danger:    #e03e3e;   /* errors, cycle exhaustion, violations */
+  --c-purple:    #7c5ce8;   /* sleeper berth only */
+
+  /* ── Stop-type accent colors ──────────────────────────────────────────── */
+  /* Each stop type owns exactly one color used for: node border,            */
+  /* card left-accent, and type label text. Nothing else.                   */
+  --stop-pre-trip: #6366f1;
+  --stop-pickup:   #4f8ef7;
+  --stop-dropoff:  #0ea572;
+  --stop-rest:     #e8960a;
+  --stop-sleeper:  #7c5ce8;
+  --stop-fuel:     #e03e3e;
+
+  /* ── Spacing (4px base unit — all multiples of 4) ────────────────────── */
+  --sp-1:  4px;    /* icon-to-text gap, tight inline */
+  --sp-2:  8px;    /* between related elements within a component */
+  --sp-3:  12px;   /* component internal padding */
+  --sp-4:  16px;   /* between components in a list */
+  --sp-5:  20px;   /* section padding */
+  --sp-6:  24px;   /* panel padding */
+
+  /* ── Border radius ────────────────────────────────────────────────────── */
+  /* Radius communicates role, not importance.                               */
+  --r-0:  0px;     /* table rows, grid cells, inline separators */
+  --r-1:  3px;     /* tags, badges, code spans, tiny chips */
+  --r-2:  5px;     /* inputs, buttons, small cards */
+  --r-3:  8px;     /* panels, modals, dropdowns */
+  /* Note: 20px pill radius is reserved for the duty toggle only */
+
+  /* ── Legacy aliases (keep for backward compat during migration) ───────── */
+  --radius-xs: var(--r-1);
+  --radius-sm: var(--r-2);
+  --radius-md: var(--r-3);
+  --radius-lg: 12px;
+
+  /* ── Shadows (floating elements only — depth via bg color elsewhere) ──── */
+  --shadow-sm:   0 1px 4px rgba(0,0,0,.55);
+  --shadow-md:   0 4px 24px rgba(0,0,0,.65);
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  /* Three sizes, three weights. Labels always uppercase + tracked.          */
+  /* Data values never uppercase. Monospace for all time/distance values.   */
+  --font:  'Inter', system-ui, -apple-system, sans-serif;
+  --mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Size tokens */
+  --t-xs:   10px;   /* labels, column headers, section titles */
+  --t-sm:   11px;   /* hints, secondary metadata */
+  --t-base: 12px;   /* body copy, descriptions */
+  --t-md:   13px;   /* primary data, stop names, instruction titles */
+  --t-lg:   15px;   /* panel titles (used sparingly) */
+  --t-xl:   18px;   /* metric values */
+  --t-2xl:  22px;   /* large metric values (day number in ELD) */
+
+  /* Label style shorthand (applied via utility class .ds-label) */
+  /* font-size: var(--t-xs); font-weight: 600; color: var(--c-muted);       */
+  /* text-transform: uppercase; letter-spacing: .6px;                       */
+}
+
+body { background: var(--c-bg); color: var(--c-text); font-family: var(--font); }
+#root { width: 100%; max-width: 100%; border: none; text-align: left; }
+
+/* ── App shell ──────────────────────────────────────────────────────────── */
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.app-header {
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-border);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-inner {
+  max-width: 1400px; margin: 0 auto;
+  padding: 0 var(--sp-6);
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* Brand — icon + stacked text */
+.brand { display: flex; align-items: center; gap: 11px; }
+.brand-icon {
+  width: 28px; height: 28px; border-radius: var(--r-2);  /* r-2 (5px) — less sharp, more mark-like */
+  background: var(--c-accent); display: grid; place-items: center;
+  color: #fff; flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+}
+.brand-text { display: flex; flex-direction: column; gap: 2px; }  /* was 1px — name and sub breathe */
+.brand-name {
+  font-size: 14px; font-weight: 700; color: var(--c-text);  /* was 13px — owns the header */
+  letter-spacing: -.3px; line-height: 1.2;
+}
+.brand-sub {
+  font-size: 11px; color: var(--c-muted); font-weight: 400;  /* was 10px — readable */
+  letter-spacing: .1px; line-height: 1.2;
+}
+.brand-sep { display: none; }
+
+/* Header right side */
+.header-controls {
+  display: flex; align-items: center; gap: var(--sp-3);  /* was --sp-2 — controls feel grouped */
+}
+
+/* ── History button ──────────────────────────────────────────────────────── */
+/* Same visual language as the duty control pill.                            */
+/* Only visible when there are saved trips — returns null otherwise.         */
+
+.hst-root { position: relative; }
+
+.hst-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  color: var(--c-muted);
+  font-size: 11px; font-weight: 500;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.hst-btn:hover,
+.hst-btn-open {
+  color: var(--c-text-2);
+  border-color: var(--c-text-2);
+  background: rgba(255,255,255,.04);
+}
+
+/* Trip count badge */
+.hst-count {
+  font-size: 10px; font-weight: 700;
+  background: var(--c-surface2);
+  border-radius: var(--r-1);
+  padding: 0 4px; line-height: 1.6;
+  color: var(--c-muted);
+}
+.hst-btn-open .hst-count,
+.hst-btn:hover .hst-count {
+  background: var(--c-surface3);
+  color: var(--c-text-2);
+}
+
+/* Dropdown panel — same structure as hdc-panel */
+.hst-panel {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  width: 320px;                        /* wider — cards need more room */
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-md);
+  z-index: 200; overflow: hidden;
+}
+.hst-panel-header {
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface2);
+}
+.hst-panel-title {
+  display: block; font-size: var(--t-base); font-weight: 700; color: var(--c-text);
+}
+.hst-panel-note {
+  display: block; font-size: var(--t-xs); color: var(--c-muted); margin-top: 2px;
+}
+.hst-panel-body {
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+}
+
+/* ── rt-root-inline — suppresses the standalone border/margin ── */
+/* When RecentTrips renders inside the history panel, it doesn't need       */
+/* the top border and margin it uses when standalone in the sidebar.        */
+.rt-root-inline {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* ── Main layout ─────────────────────────────────────────────────────────── */
+.app-main {
+  width: 100%;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 0;
+  align-items: stretch;          /* both columns fill the full height */
+  min-height: calc(100vh - 56px);
+}
+@media (max-width: 960px) {
+  .app-main { grid-template-columns: 1fr; }
+}
+
+/* ── Form panel — flush left sidebar ── */
+.form-panel {
+  background: var(--c-surface);
+  border-right: 1px solid var(--c-border);
+  padding: var(--sp-5);
+  position: sticky; top: 56px;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+}
+
+/* ── Form structure ── */
+/* Three logical zones, each with intentional spacing:                       */
+/*   Zone 1 — inputs (heading → route → cycle → rods): tighter, one group  */
+/*   Zone 2 — action (Plan Trip button): most air above it                  */
+/*   Zone 3 — secondary (demo scenarios): clearly below the action          */
+.trip-form {
+  display: flex; flex-direction: column;
+  gap: var(--sp-4);                    /* 16px base — inputs feel like one group */
+}
+
+/* ── Panel heading — gives the sidebar identity ── */
+.form-heading {
+  display: flex; flex-direction: column; gap: 3px;
+  padding-bottom: var(--sp-3);         /* tighter — heading sits closer to first field */
+  border-bottom: 1px solid var(--c-border-s);
+  margin-bottom: var(--sp-1);          /* 4px extra below the divider line */
+}
+.form-heading-title {
+  font-size: 15px; font-weight: 700; color: var(--c-text);
+  letter-spacing: -.3px; line-height: 1.2;
+}
+.form-heading-sub {
+  font-size: var(--t-xs); color: var(--c-muted);
+  font-weight: 400; letter-spacing: .1px;
+}
+
+/* ── Demo scenarios — below the submit button ── */
+/* Border-top is the chapter break. padding-top adds air inside the section. */
+.demo-root {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding-top: var(--sp-3);            /* 12px inside + 16px gap = 28px total from button */
+  border-top: 1px solid var(--c-border-s);
+}
+.demo-header {
+  display: flex; align-items: center;
+}
+.demo-label {
+  font-size: var(--t-xs); font-weight: 500; color: var(--c-muted);
+  letter-spacing: .1px;
+}
+.demo-hint { display: none; }
+.demo-buttons {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+.demo-btn {
+  background: transparent;
+  border: 1px solid var(--c-border-s);
+  border-radius: var(--r-2);
+  color: var(--c-muted);
+  font-size: 11px; font-weight: 500;
+  padding: 8px var(--sp-3);
+  cursor: pointer; text-align: center;
+  transition: border-color .15s, color .15s, background .15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.demo-btn:hover {
+  border-color: var(--c-border);
+  color: var(--c-text-2);
+  background: rgba(255,255,255,.02);
+}
+.demo-btn-active {
+  border-color: rgba(79,142,247,.35);
+  color: var(--c-accent);
+  background: var(--c-accent-dim);
+}
+.demo-btn-active:hover {
+  border-color: rgba(79,142,247,.35);
+  color: var(--c-accent);
+  background: var(--c-accent-dim);
+}
+
+/* ── Route fields — sequential location inputs with connecting rail ── */
+.route-fields {
+  display: flex; flex-direction: column; gap: 0;
+}
+.route-field-row {
+  display: flex; gap: var(--sp-3); align-items: stretch;
+}
+/* Rail column */
+.route-rail {
+  display: flex; flex-direction: column; align-items: center;
+  width: 16px; flex-shrink: 0;
+  padding-top: 25px;
+}
+.route-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid;
+}
+.route-dot-origin      { border-color: var(--c-accent);  background: var(--c-accent); }
+.route-dot-waypoint    { border-color: var(--c-border);   background: var(--c-surface2); }
+.route-dot-destination { border-color: var(--c-success); background: var(--c-success); }
+.route-line {
+  width: 1px; flex: 1; min-height: 14px;
+  background: var(--c-border-s);
+  margin: 4px 0;
+}
+/* Field column */
+.route-field {
+  flex: 1; display: flex; flex-direction: column; gap: 5px;
+  padding-bottom: var(--sp-3);         /* 12px between fields — tight group */
+}
+.route-field:last-child { padding-bottom: 0; }
+.route-field-label {
+  font-size: var(--t-xs); font-weight: 500; color: var(--c-muted);
+  letter-spacing: .1px;
+  line-height: 1;
+}
+.route-field-hint {
+  font-size: 10px; color: var(--c-muted); line-height: 1.4;
+  opacity: .75;
+}
+
+/* ── Shared field input ── */
+.field-input {
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  color: var(--c-text);
+  font-size: 13px;
+  padding: 9px 11px;                   /* slightly more vertical padding */
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+  width: 100%;
+}
+.field-input::placeholder { color: var(--c-muted); opacity: .55; }
+.field-input:focus {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 2px rgba(79,142,247,.12);
+}
+.field-hint {
+  font-size: 10px; color: var(--c-muted); line-height: 1.4;
+}
+
+/* ── Cycle field — compliance input, visually distinct ── */
+.cycle-field {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  background: rgba(79,142,247,.04);
+  border: 1px solid rgba(79,142,247,.11);
+  border-radius: var(--r-2);
+  padding: var(--sp-3) var(--sp-3);
+}
+.cycle-field-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.cycle-field-label {
+  font-size: var(--t-xs); font-weight: 500; color: var(--c-muted);
+  letter-spacing: .1px;
+}
+.cycle-field-cap {
+  font-size: var(--t-xs); color: var(--c-muted); font-family: var(--mono);
+  opacity: .5;
+}
+.cycle-input-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.cycle-input {
+  padding-right: 28px;
+  font-family: var(--mono); font-size: 14px; font-weight: 600;
+  letter-spacing: -.2px;
+  background: var(--c-surface) !important;
+}
+.cycle-input-suffix {
+  position: absolute; right: 10px;
+  font-size: 12px; color: var(--c-muted); font-family: var(--mono);
+  pointer-events: none;
+}
+.cycle-field-hint {
+  font-size: 10px; color: var(--c-muted); line-height: 1.5;
+  opacity: .65; margin: 0;
+}
+
+/* ── Dispatch button ── */
+/* More top margin than the base gap — the primary action needs the most    */
+/* breathing room in the sidebar. It signals "this is where you act."       */
+.btn-dispatch {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--c-accent); color: #fff;
+  border: none; border-radius: var(--r-2);
+  font-size: 13px; font-weight: 600;
+  padding: 13px 16px;
+  cursor: pointer;
+  transition: background .15s, opacity .15s;
+  width: 100%; letter-spacing: .1px;
+  margin-top: var(--sp-2);             /* 8px extra above the button — total ~24px from RODS */
+}
+.btn-dispatch:hover:not(:disabled) { background: var(--c-accent-h); }
+.btn-dispatch:active:not(:disabled) { opacity: .9; }
+.btn-dispatch:disabled { opacity: .45; cursor: not-allowed; }
+.btn-dispatch .spin { margin-right: 4px; }
+
+/* ── Text link — replaces ghost button for secondary actions ── */
+.btn-text-link {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--c-muted);
+  padding: var(--sp-2) 0 0;           /* tighter top padding — was --sp-3 */
+  transition: color .15s;
+  width: 100%;
+}
+.btn-text-link:hover { color: var(--c-text-2); }
+
+/* ── Keep btn-primary for any other uses outside the form ── */
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--c-accent); color: #fff;
+  border: none; border-radius: var(--r-2);
+  font-size: 13px; font-weight: 600;
+  padding: 10px 16px; cursor: pointer;
+  transition: background .15s, opacity .15s;
+  width: 100%; letter-spacing: .1px;
+}
+.btn-primary:hover:not(:disabled) { background: var(--c-accent-h); }
+.btn-primary:active:not(:disabled) { opacity: .9; }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-ghost {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: transparent; color: var(--c-muted);
+  border: 1px solid var(--c-border); border-radius: var(--r-2);
+  font-size: 11px; padding: 7px 14px; cursor: pointer;
+  margin-top: 10px; width: 100%;
+  transition: color .15s, border-color .15s;
+}
+.btn-ghost:hover { color: var(--c-text-2); border-color: var(--c-text-2); }
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.spin { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--c-border);
+  border-top-color: var(--c-accent);
+  animation: spin .8s linear infinite;
+  margin-bottom: 14px;
+}
+
+/* ── Results panel — content area ── */
+.results-panel {
+  background: var(--c-bg);
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 56px);
+  overflow: hidden;             /* clip — scroll happens inside results-content */
+}
+
+/* ── Results content — tab bar pinned, content scrolls ── */
+.results-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Empty / loading state ── */
+/* Left-aligned within the content area — not a full-panel takeover */
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 80px var(--sp-6); text-align: center; gap: var(--sp-3);
+}
+.empty-icon { color: var(--c-muted); opacity: .3; margin-bottom: var(--sp-2); }
+.empty-state h3 { font-size: 17px; font-weight: 600; color: var(--c-text); letter-spacing: -.2px; }
+.empty-state p  { font-size: var(--t-base); color: var(--c-text-2); max-width: 300px; line-height: 1.65; }
+
+/* Feature chips — compact inline highlights below the supporting sentence */
+.empty-features {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+.empty-feature {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 500; color: var(--c-muted);
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border-s);
+  border-radius: var(--r-1);
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+
+/* ── Error banner ────────────────────────────────────────────────────────── */
+.error-banner {
+  display: flex; align-items: flex-start; gap: var(--sp-3);
+  background: rgba(224,62,62,.08); border: 1px solid rgba(224,62,62,.2);
+  border-radius: var(--r-3); padding: var(--sp-4) var(--sp-5);
+  margin: var(--sp-5);
+  color: var(--c-danger);
+}
+.error-banner strong { display: block; margin-bottom: var(--sp-1); font-size: var(--t-md); }
+.error-banner p { font-size: var(--t-base); color: var(--c-text-2); margin: 0; line-height: 1.6; }
+.error-dismiss {
+  display: flex; align-items: flex-start;
+  background: none; border: none; cursor: pointer;
+  color: var(--c-danger); opacity: .6; padding: 0; flex-shrink: 0;
+  transition: opacity .15s;
+  margin-left: auto;
+}
+.error-dismiss:hover { opacity: 1; }
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  padding: 0 var(--sp-5);
+  overflow-x: auto;
+  flex-shrink: 0;               /* never shrink — always visible */
+  /* Hide scrollbar on the tab bar itself */
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  display: flex; align-items: center; gap: var(--sp-2);
+  background: none; border: none; color: var(--c-muted);
+  font-size: var(--t-base); font-weight: 400;
+  padding: 14px var(--sp-3);          /* more vertical — tab bar has presence */
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+  letter-spacing: .2px;
+}
+.tab-btn:hover { color: var(--c-text-2); }
+.tab-btn.active {
+  color: var(--c-text); border-bottom-color: var(--c-accent);
+  font-weight: 600;
+  /* no font-size change — prevents layout shift on click */
+  letter-spacing: 0;
+}
+.tab-badge {
+  background: var(--c-surface2); color: var(--c-muted);
+  font-size: var(--t-xs); padding: 1px 6px; border-radius: var(--r-1);
+  font-weight: 500;
+}
+.tab-btn.active .tab-badge { background: var(--c-accent-dim); color: var(--c-accent); }
+
+/* Tab content — independently scrollable, no uniform padding */
+/* Each tab component controls its own internal spacing */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;                /* required for flex child to scroll */
+  padding: var(--sp-5);        /* uniform 20px — content starts at the same distance from all edges */
+}
+
+/* ── Recent Trips ────────────────────────────────────────────────────────── */
+/*                                                                            */
+/* Three-row card per trip: headline · via+stats · compliance+markers        */
+/* Compliance = colored left border + inline status text.                    */
+/* All data stored at save time — no re-processing needed.                   */
+
+.rt-root {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--c-border-s);
+  margin-top: var(--sp-2);
+}
+.rt-root-inline {
+  border-top: none; padding-top: 0; margin-top: 0;
+}
+
+.rt-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2px;
+}
+.rt-label {
+  font-size: var(--t-xs); font-weight: 500; color: var(--c-muted);
+  letter-spacing: .1px;
+}
+
+/* Trash icon button */
+.rt-clear {
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--c-muted); padding: 2px;
+  border-radius: var(--r-1);
+  transition: color .15s, background .15s;
+}
+.rt-clear:hover { color: var(--c-danger); background: rgba(224,62,62,.08); }
+
+.rt-list { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+/* ── Trip card — three rows of context ── */
+.rt-card {
+  display: flex; flex-direction: column; gap: 4px;
+  width: 100%; text-align: left;
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border-s);
+  border-left: 2px solid var(--rt-border, var(--c-border));
+  border-radius: 0 var(--r-2) var(--r-2) 0;
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.rt-card:hover {
+  background: var(--c-surface3);
+  border-color: var(--c-border);
+  border-left-color: var(--rt-border, var(--c-border));
+}
+
+/* Row 1: headline + timestamp */
+.rt-card-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-2);
+}
+.rt-headline {
+  display: flex; align-items: baseline; gap: 5px;
+  flex: 1; min-width: 0; overflow: hidden;
+}
+.rt-origin {
+  font-size: 12px; font-weight: 600; color: var(--c-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+.rt-arrow { font-size: 10px; color: var(--c-muted); flex-shrink: 0; }
+.rt-dest {
+  font-size: 12px; font-weight: 600; color: var(--c-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+.rt-time {
+  font-size: 10px; color: var(--c-muted); white-space: nowrap;
+  flex-shrink: 0; opacity: .7;
+}
+
+/* Row 2: via + stats */
+.rt-card-mid {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-2);
+}
+.rt-via {
+  font-size: 10px; color: var(--c-muted); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;
+}
+.rt-stats {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; color: var(--c-muted); font-family: var(--mono);
+  white-space: nowrap; flex-shrink: 0;
+}
+.rt-dot { opacity: .4; }
+
+/* Row 3: compliance + cycle + markers */
+.rt-card-bot {
+  display: flex; align-items: center; gap: var(--sp-2);
+  flex-wrap: wrap; margin-top: 1px;
+}
+.rt-status {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+}
+
+/* Planner marker tags */
+.rt-markers { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.rt-marker {
+  font-size: 9px; font-weight: 600;
+  padding: 1px 5px; border-radius: var(--r-1);
+  white-space: nowrap; text-transform: uppercase; letter-spacing: .3px;
+}
+.rt-marker-break   { color: var(--c-warn);   background: rgba(232,150,10,.1); }
+.rt-marker-sleeper { color: var(--c-purple); background: rgba(124,92,232,.1); }
+.rt-marker-fuel    { color: var(--c-danger); background: rgba(224,62,62,.1);  }
+
+/* ── Trip Preview Modal ──────────────────────────────────────────────────── */
+/*                                                                            */
+/* Centered overlay card. Opens when a recent trip card is clicked.          */
+/* Backdrop click closes. Escape key closes. Body scroll locked while open.  */
+
+.tpm-backdrop {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-5);
+  /* Subtle backdrop blur — adds depth without being heavy */
+  backdrop-filter: blur(2px);
+}
+
+.tpm-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-md);
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Modal header ── */
+.tpm-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  border-bottom: 1px solid var(--c-border-s);
+  background: var(--c-surface2);
+}
+.tpm-header-left { display: flex; flex-direction: column; gap: 2px; }
+.tpm-title {
+  font-size: 13px; font-weight: 700; color: var(--c-text);
+  letter-spacing: -.1px;
+}
+.tpm-saved { font-size: 10px; color: var(--c-muted); }
+.tpm-close {
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--c-muted); padding: 2px; border-radius: var(--r-1);
+  transition: color .15s, background .15s;
+  flex-shrink: 0;
+}
+.tpm-close:hover { color: var(--c-text-2); background: var(--c-surface3); }
+
+/* ── Route section ── */
+.tpm-route {
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  border-bottom: 1px solid var(--c-border-s);
+}
+.tpm-route-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+}
+.tpm-route-icon { flex-shrink: 0; }
+.tpm-icon-origin   { color: var(--c-accent); }
+.tpm-icon-waypoint { color: var(--c-muted); }
+.tpm-icon-dest     { color: var(--c-success); }
+.tpm-route-label {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .4px; font-weight: 400;
+  min-width: 44px; flex-shrink: 0;
+}
+.tpm-route-value {
+  font-size: 13px; font-weight: 500; color: var(--c-text);
+}
+.tpm-route-connector {
+  display: flex; align-items: center;
+  padding: 3px 0 3px 5px;            /* aligns with icon center */
+}
+.tpm-route-line {
+  width: 1px; height: 14px;
+  background: var(--c-border-s);
+  margin-left: 0;
+}
+
+/* ── Compliance badge ── */
+.tpm-compliance {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--c-border-s);
+  flex-wrap: wrap;
+}
+.tpm-compliance-label {
+  font-size: 12px; font-weight: 700;
+}
+.tpm-cycle-input {
+  font-size: 10px; color: var(--c-muted);
+  margin-left: auto; font-family: var(--mono);
+}
+
+/* ── Stats grid — 2×2 ── */
+.tpm-stats {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--c-border-s);
+}
+.tpm-stat {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: var(--sp-3) var(--sp-4);
+  border-right: 1px solid var(--c-border-s);
+  border-bottom: 1px solid var(--c-border-s);
+}
+.tpm-stat:nth-child(2n) { border-right: none; }
+.tpm-stat:nth-last-child(-n+2) { border-bottom: none; }
+.tpm-stat-value {
+  font-size: 16px; font-weight: 700; color: var(--c-text);
+  font-family: var(--mono); letter-spacing: -.3px; line-height: 1;
+}
+.tpm-stat-label {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px; font-weight: 400;
+}
+
+/* ── Planner actions section ── */
+.tpm-section {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--c-border-s);
+}
+.tpm-section-label {
+  font-size: 10px; font-weight: 500; color: var(--c-muted);
+  letter-spacing: .2px; margin-bottom: var(--sp-2);
+}
+.tpm-actions { display: flex; flex-direction: column; gap: 5px; }
+.tpm-action-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+}
+.tpm-action-label {
+  font-size: 12px; font-weight: 500; color: var(--c-text-2);
+}
+
+/* ── Footer actions ── */
+.tpm-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface2);
+  gap: var(--sp-3);
+}
+.tpm-footer-right { display: flex; align-items: center; gap: var(--sp-2); }
+
+.tpm-btn-remove {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: var(--c-muted);
+  padding: 0; transition: color .15s;
+}
+.tpm-btn-remove:hover { color: var(--c-danger); }
+
+.tpm-btn-cancel {
+  background: none;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  color: var(--c-muted); font-size: 12px; font-weight: 500;
+  padding: 6px 12px; cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.tpm-btn-cancel:hover { color: var(--c-text-2); border-color: var(--c-text-2); }
+
+.tpm-btn-load {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--c-accent); color: #fff;
+  border: none; border-radius: var(--r-2);
+  font-size: 12px; font-weight: 600;
+  padding: 6px 14px; cursor: pointer;
+  transition: background .15s;
+}
+.tpm-btn-load:hover { background: var(--c-accent-h); }
+
+/* ── Compliance status panel ─────────────────────────────────────────────── */
+/*                                                                            */
+/* One status badge + action chips on the same horizontal axis.              */
+/* Badge = what the compliance verdict is.                                   */
+/* Chips = what the planner did to achieve it.                               */
+/* Both read as one block, not two separate sections.                        */
+
+.cs-root {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+}
+
+/* ── Status badge ── */
+.cs-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--r-1);
+  border: 1px solid;
+  width: fit-content;
+}
+.cs-badge-icon  { flex-shrink: 0; }
+.cs-badge-label { font-size: 12px; font-weight: 700; letter-spacing: .1px; }
+
+/* Status variants */
+.cs-status-compliant {
+  color: var(--c-success);
+  border-color: rgba(14,165,114,.3);
+  background: rgba(14,165,114,.07);
+}
+.cs-status-warning {
+  color: var(--c-warn);
+  border-color: rgba(232,150,10,.3);
+  background: rgba(232,150,10,.07);
+}
+.cs-status-illegal {
+  color: var(--c-danger);
+  border-color: rgba(224,62,62,.3);
+  background: rgba(224,62,62,.07);
+}
+
+/* ── Action chips — one per planner intervention ── */
+/* Colored by type so each chip is immediately identifiable.                 */
+/* Detail text lives in the title tooltip — not cluttering the chip.        */
+.cs-chips {
+  display: flex; flex-wrap: wrap; gap: var(--sp-1);
+}
+.cs-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--r-1);
+  white-space: nowrap;
+  /* color and background set inline from action config */
+}
+
+/* ── Clean trip — no interventions needed ── */
+/* On a short trip this is the only line in the compliance section.          */
+/* Give it enough presence to read as a status, not a footnote.             */
+.cs-clean {
+  font-size: 12px; font-weight: 500; color: var(--c-text-2);
+  letter-spacing: 0;
+}
+
+/* ── Legacy cs-action-* classes — kept so nothing breaks ── */
+.cs-actions      { display: none; }
+.cs-actions-label { display: none; }
+.cs-action-list  { display: none; }
+.cs-action-row   { display: none; }
+.cs-action-icon  { display: none; }
+.cs-action-label { display: none; }
+.cs-action-detail { display: none; }
+
+/* ── Summary card ────────────────────────────────────────────────────────── */
+.summary-card { display: flex; flex-direction: column; gap: 0; }
+
+/* ── Compliance group ── */
+.summary-compliance-group {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--c-border-s);
+  margin-bottom: var(--sp-4);
+}
+
+/* ── Primary metrics — 3 large numbers in a row ── */
+.summary-primary {
+  display: flex; align-items: stretch;
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+}
+.summary-primary-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px var(--sp-4);
+  gap: 6px;
+  text-align: center;
+}
+.summary-primary-divider {
+  width: 1px; background: var(--c-border);
+  flex-shrink: 0; align-self: stretch;
+}
+.summary-primary-value {
+  font-size: 26px; font-weight: 700; color: var(--c-text);
+  font-family: var(--mono); letter-spacing: -.6px; line-height: 1;
+}
+.summary-primary-warn { color: var(--c-warn); }
+/* Labels under the big numbers — quiet, not competing */
+.summary-primary-label {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .4px; font-weight: 400;
+}
+
+/* ── Supporting detail — two equal panels ── */
+.summary-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.summary-detail-divider { display: none; }
+
+.summary-detail-col {
+  display: flex; flex-direction: column;
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+}
+
+/* Section heading — lighter than the values below it */
+.summary-detail-heading {
+  font-size: var(--t-xs); font-weight: 500; color: var(--c-muted);
+  letter-spacing: .3px; text-transform: uppercase;
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--c-border-s);
+  margin-bottom: 0;
+}
+.summary-detail-dl {
+  display: flex; flex-direction: column; gap: 0;
+  flex: 1;
+}
+.summary-detail-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--c-border-s);
+  gap: var(--sp-2);
+}
+.summary-detail-row:last-child { border-bottom: none; }
+.summary-detail-row.summary-detail-warn dt { color: var(--c-warn); }
+.summary-detail-row.summary-detail-warn dd { color: var(--c-warn); }
+.summary-detail-row dt {
+  font-size: var(--t-xs); color: var(--c-muted);
+  /* lowercase — heading above is already the section label */
+  font-weight: 400; letter-spacing: .1px;
+}
+.summary-detail-row dd {
+  font-size: 13px; font-weight: 700; color: var(--c-text);
+  font-family: var(--mono); letter-spacing: -.2px;
+}
+
+/* ── Footnote — attached below the two panels ── */
+/* Visually secondary to the main metrics, but intentional — not washed out. */
+.summary-footnote {
+  border-top: 1px solid var(--c-border);   /* was --c-border-s — one step more visible */
+  padding-top: var(--sp-3);
+}
+.summary-footnote-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3);
+}
+.summary-footnote-text {
+  font-size: 11px;                         /* was 10px — one step more readable */
+  color: var(--c-text-2);                  /* was --c-muted — lifted one level */
+  line-height: 1.6;
+  flex: 1;
+}
+.summary-footnote-toggle {
+  display: flex; align-items: center; gap: 5px;
+  background: none;
+  border: 1px solid var(--c-border-s);     /* added — makes it read as a button */
+  border-radius: var(--r-1);
+  cursor: pointer;
+  padding: 3px 8px;                        /* was 0 — gives the button a tap target */
+  transition: color .15s, border-color .15s, background .15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.summary-footnote-toggle:hover {
+  color: var(--c-accent);
+  border-color: rgba(79,142,247,.3);
+  background: var(--c-accent-dim);
+}
+/* Label inside the toggle — clearly readable */
+.summary-footnote-toggle-label {
+  font-size: 11px;                         /* was 10px */
+  font-weight: 500;
+  color: var(--c-text-2);                  /* was --c-muted */
+  letter-spacing: .1px;
+}
+
+/* ── Leg inline row — replaces leg cards ── */
+.legs-row {
+  display: flex; flex-direction: column; gap: 0;
+  border-top: 1px solid var(--c-border-s);
+  border-bottom: 1px solid var(--c-border-s);
+}
+.leg-inline {
+  display: flex; align-items: baseline; gap: var(--sp-3);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--c-border-s);
+  font-size: var(--t-sm);
+}
+.leg-inline:last-child { border-bottom: none; }
+.leg-inline-badge {
+  display: flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--t-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .4px;
+  flex-shrink: 0; min-width: 52px;
+}
+.leg-inline-route {
+  color: var(--c-text-2); flex: 1;
+  font-size: var(--t-base);
+}
+.leg-inline-stats {
+  color: var(--c-muted); font-family: var(--mono);
+  font-size: var(--t-xs); white-space: nowrap;
+}
+
+/* ── Trip Timeline ───────────────────────────────────────────────────────── */
+/* Three visual registers: destination · rest · service                      */
+/* The driving segment IS the timeline — events hang off it.                 */
+
+.tl-root { display: flex; flex-direction: column; }
+.tl-event { display: flex; flex-direction: column; }
+
+/* ── Driving segment — the line between stops ── */
+.tl-segment {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding-left: 58px;
+  position: relative;
+  min-height: 32px;            /* reduced — short trips have short gaps */
+}
+.tl-segment-line {
+  position: absolute; left: 58px; top: 0; bottom: 0;
+  width: 1px; background: var(--c-border);
+  transform: translateX(-50%);
+}
+.tl-segment-miles {
+  position: absolute; z-index: 1;
+  top: 50%; transform: translateY(-50%);
+  left: 66px;
+  font-size: 10px; color: var(--c-text-2); font-family: var(--mono);
+  line-height: 1; letter-spacing: .1px;
+  background: var(--c-bg);
+  padding: 0 3px;
+}
+
+/* ── Destination stop — pickup / dropoff ── */
+.tl-destination {
+  display: grid;
+  grid-template-columns: 44px 28px 1fr;
+  gap: 0 var(--sp-2);
+  align-items: start;
+  padding-bottom: var(--sp-5);        /* was var(--sp-4) — more space between stops */
+}
+
+/* Time column */
+.tl-dest-time {
+  display: flex; flex-direction: column; align-items: flex-end;
+  padding-top: 5px; gap: 2px;
+}
+.tl-dest-hour {
+  font-size: 12px; font-weight: 600; color: var(--c-text-2);
+  font-family: var(--mono); line-height: 1; letter-spacing: -.2px;
+}
+.tl-dest-time-label {
+  font-size: 9px; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .3px;
+  opacity: 0.7;                       /* added — quieter label */
+}
+
+/* Node — the circle */
+.tl-dest-node {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; flex-shrink: 0;
+  color: var(--dest-color, var(--c-accent));
+  background: color-mix(in srgb, var(--dest-color) 10%, transparent);
+  border: 1.5px solid var(--dest-color);
+  position: relative; z-index: 1;
+}
+
+/* Content */
+.tl-dest-content { padding-top: 3px; padding-left: var(--sp-2); }
+
+/* Type label — the first thing you read, leads the stop */
+.tl-dest-type {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .1px; text-transform: uppercase;
+  margin-bottom: 4px; line-height: 1;
+}
+
+/* Location — the headline */
+.tl-dest-location {
+  font-size: 15px; font-weight: 700;  /* was 14px and 600 — more prominent */
+  color: var(--c-text);
+  line-height: 1.25; letter-spacing: -.1px;
+  margin-bottom: 8px;                 /* was 7px — slightly more space */
+}
+
+/* Meta rows */
+.tl-dest-meta {
+  display: flex; flex-direction: column; gap: 4px;
+  opacity: 0.85;                      /* added — quieter metadata */
+}
+.tl-dest-meta-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--t-xs); color: var(--c-muted);
+}
+.tl-dest-meta-sep { opacity: .3; }
+.tl-dest-depart {
+  color: var(--c-accent); font-weight: 600; font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* ── Rest event — sleeper / mandatory break ── */
+.tl-rest {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin-left: 52px;
+  margin-bottom: var(--sp-3);         /* added — space after rest events */
+  border-left: 2px solid var(--rest-color);
+  border-radius: 0 var(--r-2) var(--r-2) 0;
+  padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--rest-color) 5%, var(--c-surface2));
+}
+/* Sleeper gets more vertical padding — it's a major event */
+.tl-rest-sleeper {
+  padding: var(--sp-3) var(--sp-3);
+  background: color-mix(in srgb, var(--rest-color) 7%, var(--c-surface2));
+}
+/* Break stays compact */
+.tl-rest-break {
+  padding: var(--sp-2) var(--sp-3);
+}
+.tl-rest-icon {
+  color: var(--rest-color); flex-shrink: 0; opacity: .85;
+}
+.tl-rest-body { flex: 1; min-width: 0; }
+/* Label is the primary read — slightly larger than sublabel */
+.tl-rest-label {
+  font-size: 13px; font-weight: 700;  /* was 12px — more prominent */
+  margin-bottom: 4px; letter-spacing: -.1px; line-height: 1.2;  /* was 3px margin */
+}
+.tl-rest-sublabel {
+  font-size: 10px; color: var(--c-muted); line-height: 1.5;
+  opacity: 0.85;                      /* added — quieter sublabel */
+}
+.tl-rest-times {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 3px; flex-shrink: 0;
+}
+.tl-rest-duration {
+  font-size: 13px; font-weight: 700; color: var(--c-text);
+  font-family: var(--mono); letter-spacing: -.2px; line-height: 1;
+}
+.tl-rest-window {
+  font-size: 10px; color: var(--c-muted); font-family: var(--mono);
+  white-space: nowrap;
+  opacity: 0.8;                       /* added — quieter time window */
+}
+
+/* ── Service annotation — pre_trip / fuel ── */
+.tl-service {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  margin-left: 52px;
+  margin-bottom: var(--sp-2);         /* added — space after service events */
+  padding: 6px 0;
+  font-size: 11px; color: var(--c-muted);
+}
+/* Icon aligns to the first line */
+.tl-service > svg { margin-top: 1px; }
+
+.tl-service-body {
+  display: flex; flex-direction: column; gap: 3px;
+  flex: 1; min-width: 0;
+}
+.tl-service-top {
+  display: flex; align-items: baseline; gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.tl-service-label {
+  font-weight: 700; flex-shrink: 0; font-size: 11px;
+}
+.tl-service-location {
+  color: var(--c-text-2); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px;
+}
+.tl-service-times {
+  font-family: var(--mono); font-size: 10px; color: var(--c-muted);
+  white-space: nowrap; flex-shrink: 0;
+  opacity: 0.8;                       /* added — quieter times */
+}
+/* Sublabel — shown for fuel (interval context) and pre-trip */
+.tl-service-sublabel {
+  font-size: 10px; color: var(--c-muted); line-height: 1.4;
+  opacity: .75;                       /* was .8 — slightly quieter */
+}
+
+/* ── Route Instructions ──────────────────────────────────────────────────── */
+/*                                                                            */
+/* Three levels per step:                                                    */
+/*   1. title  — what happens (primary, always read)                         */
+/*   2. data   — when/how far (secondary, scanned for key numbers)           */
+/*   3. prose  — why/context (shown for compliance steps: rest/sleeper/fuel) */
+/*                                                                            */
+/* Step number is colored by category.                                       */
+/* Compliance steps (rest/sleeper/fuel) get a left accent bar.               */
+
+.ri-list { display: flex; flex-direction: column; gap: 8px; }  /* was 4px — more breathing room */
+
+.ri-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  border-bottom: 1px solid rgba(255,255,255,0.04);  /* was var(--c-border-s) — much softer */
+  padding-bottom: 8px;                              /* added — space before border */
+}
+.ri-row:last-child { border-bottom: none; }
+
+/* Compliance accent — left border signals this step is HOS-critical */
+.ri-row-accent {
+  border-left: 2px solid var(--ri-accent, var(--c-border));
+  background: color-mix(in srgb, var(--ri-accent, transparent) 2%, transparent);  /* was 3% — more subtle */
+  border-radius: 0 var(--r-2) var(--r-2) 0;         /* added — softer edges */
+  padding-left: var(--sp-2);                        /* added — inset from accent bar */
+}
+
+/* Step number — right-aligned, vertically centered with the title */
+.ri-step {
+  display: flex; align-items: flex-start; justify-content: flex-end;
+  padding: 16px var(--sp-2) 16px 0;   /* was 18px — slightly tighter */
+  font-size: 12px; font-weight: 700;
+  font-family: var(--mono); line-height: 1.5;
+  opacity: 0.8;                       /* added — quieter step numbers */
+}
+
+/* Body */
+.ri-body {
+  padding: 16px var(--sp-4) 16px var(--sp-3);  /* was 18px — slightly tighter */
+  display: flex; flex-direction: column; gap: 0;
+}
+
+/* Primary action — the verb + subject */
+.ri-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--c-text);
+  line-height: 1.4; letter-spacing: -.1px;
+  margin-bottom: 7px;                 /* was 6px — slightly more space */
+}
+
+/* Structured data row */
+.ri-data {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 0;
+  opacity: 0.88;                      /* was 0.75 — lifted slightly, metadata is now readable */
+}
+
+/* Day/time — important but clearly below the title */
+.ri-data-time {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  letter-spacing: -.1px; line-height: 1.4;
+}
+
+/* Distance / duration — readable, not invisible */
+.ri-data-num {
+  font-family: var(--mono); font-size: 11px; font-weight: 500; /* was 10px/400 — one step up in both */
+  color: var(--c-text-2); line-height: 1.4;
+}
+
+/* Prose — compliance context, shown for rest/sleeper/fuel */
+.ri-prose {
+  font-size: 11px; color: var(--c-muted);
+  line-height: 1.7;                   /* was 1.6 — more readable */
+  margin-top: 8px;                    /* was 6px — more space from data */
+  opacity: 0.85;                      /* was 0.9 — quieter */
+  max-width: 65ch;                    /* added — prevent overly long lines */
+}
+
+/* CFR reference — legal citation, visually separated */
+.ri-cfr {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;                    /* smaller than prose */
+  color: var(--c-muted);
+  opacity: 0.6;                       /* very quiet */
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ── Legacy token classes — kept so nothing breaks ── */
+.ri-tokens         { display: none; }
+.ri-token          { display: none; }
+.ri-token-daytime  { display: none; }
+.ri-token-duration { display: none; }
+.ri-token-distance { display: none; }
+
+/* ── ELD Log Sheets ──────────────────────────────────────────────────────── */
+.eld-logs { display: flex; flex-direction: column; gap: var(--sp-6); }
+.eld-empty { padding: var(--sp-6) var(--sp-5); text-align: center; font-size: var(--t-base); color: var(--c-muted); }
+
+/* ── Print toolbar — sits above the log cards, hidden when printing ── */
+.eld-print-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-2) 0 var(--sp-4);
+  gap: var(--sp-3);
+}
+.eld-print-info {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px; font-weight: 500;
+}
+.eld-print-btn {
+  display: flex; align-items: center; gap: var(--sp-2);
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  color: var(--c-text-2);
+  font-size: 12px; font-weight: 600;
+  padding: 6px 12px; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.eld-print-btn:hover {
+  border-color: var(--c-accent);
+  color: var(--c-text);
+  background: var(--c-surface3);
+}
+
+/* Card — document-like, sharp corners */
+.eld-form-card {
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  overflow: hidden;
+  background: var(--c-surface);
+  border-top: 2px solid var(--c-accent);
+}
+
+/* ── Document header — three-column layout ── */
+.eld-form-card-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--sp-4);
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface2);
+}
+
+/* Left: day identity */
+.eld-form-header-day {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px; flex-shrink: 0;
+  padding-right: var(--sp-5);
+  border-right: 1px solid var(--c-border-s);
+}
+.eld-form-day-label {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .4px; font-weight: 400;
+}
+.eld-form-day-num {
+  font-size: 30px; font-weight: 700; color: var(--c-accent);
+  font-family: var(--mono); line-height: 1; letter-spacing: -.5px;
+}
+.eld-form-day-date {
+  font-size: 10px; color: var(--c-muted); font-family: var(--mono);
+  letter-spacing: .1px; margin-top: 3px;
+}
+
+/* Center: regulatory citation */
+.eld-form-header-center {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 0 var(--sp-3);
+}
+.eld-form-header-reg {
+  font-size: 13px; font-weight: 600; color: var(--c-text);
+  letter-spacing: -.2px; line-height: 1.2;
+}
+.eld-form-header-cycle {
+  font-size: var(--t-xs); color: var(--c-muted); font-weight: 400;
+  letter-spacing: .1px;
+}
+
+/* Right: miles */
+.eld-form-header-right {
+  display: flex; gap: var(--sp-4); align-items: flex-end;
+  flex-shrink: 0;
+  padding-left: var(--sp-5);
+  border-left: 1px solid var(--c-border-s);
+}
+.eld-form-header-field { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.eld-form-field-label {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .4px; font-weight: 400;
+}
+.eld-form-field-value {
+  font-size: 15px; font-weight: 700; color: var(--c-text);
+  font-family: var(--mono); letter-spacing: -.3px; line-height: 1;
+}
+.eld-form-miles-val { color: var(--c-success); }
+
+/* ── 24-hour duty grid ── */
+.eld-form-grid { display: flex; flex-direction: column; border-bottom: 1px solid var(--c-border); }
+.eld-form-header-row {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface2);
+}
+.eld-form-duty-row {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--c-border);
+  min-height: 48px;                    /* was 44px — more room for the duty line */
+}
+.eld-form-duty-row:last-child { border-bottom: none; }
+
+/* Row labels — primary navigation of the grid */
+.eld-form-row-label {
+  width: 130px; flex-shrink: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: var(--sp-2) var(--sp-3);
+  border-right: 1px solid var(--c-border);
+  font-size: 11px; font-weight: 500; color: var(--c-text-2);  /* was 10px/muted — more readable */
+  line-height: 1.35;
+}
+.eld-form-label-line { display: block; }
+
+.eld-form-track-area { flex: 1; display: flex; position: relative; }
+.eld-form-track-ruled { background: var(--c-surface); }
+
+.eld-form-hour-col {
+  flex: 1; border-right: 1px solid var(--c-border);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 3px;
+}
+.eld-form-hour-col:last-child { border-right: none; }
+/* Major boundary columns (12 AM / 12 PM) get a slightly stronger border */
+.eld-form-hour-col-major {
+  border-right-color: var(--c-border) !important;
+}
+.eld-form-hour-label { font-size: 9px; color: var(--c-muted); font-family: var(--mono); user-select: none; }
+
+/* ── AM / PM orientation band ── */
+/* A compact row between the hour header and the duty rows.                  */
+/* Shows "AM" centered in the first half and "PM" in the second half,       */
+/* with a noon divider line. Helps readers orient quickly.                  */
+.eld-form-ampm-row {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--c-border-s);
+  background: var(--c-surface2);
+  height: 14px;
+}
+.eld-form-ampm-track {
+  position: relative; flex: 1;
+}
+.eld-form-ampm-label {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  font-size: 8px; font-weight: 600; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  user-select: none; pointer-events: none;
+}
+/* Noon divider — a subtle vertical line at the 50% mark */
+.eld-form-noon-line {
+  position: absolute; top: 0; bottom: 0;
+  width: 1px; background: var(--c-border);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Grid lines */
+.eld-form-col-line {
+  position: absolute; top: 0; bottom: 0;
+  width: 1px; background: var(--c-border); opacity: .35; pointer-events: none;
+}
+.eld-form-col-line-major { opacity: .8; }
+.eld-form-halfhour-tick {
+  position: absolute; bottom: 0; width: 1px; height: 4px;
+  background: var(--c-muted); opacity: .25; pointer-events: none;
+}
+
+/* Duty line */
+.eld-form-line-h {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 0; border-top: 4px solid; pointer-events: none;
+  opacity: .9;                         /* was .85 — slightly more present */
+}
+/* Vertical connectors */
+.eld-form-line-v {
+  position: absolute; top: 15%; bottom: 15%; width: 2px;
+  background: var(--c-text); opacity: .35; pointer-events: none;
+}
+
+/* Total column */
+.eld-form-total-col {
+  width: 64px; flex-shrink: 0;         /* was 60px — slightly more room */
+  border-left: 1px solid var(--c-border);
+  display: flex; align-items: center; justify-content: center; padding: 0 var(--sp-2);
+}
+.eld-form-total-heading {
+  font-size: 9px; font-weight: 700; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.eld-form-total-value {
+  font-size: 13px; font-weight: 700; color: var(--c-text);  /* was 12px — totals are primary data */
+  font-family: var(--mono); letter-spacing: -.2px;
+}
+.eld-form-total-zero { color: var(--c-border); font-size: var(--t-md); }
+
+/* ── Hours summary — inline grid, no nested card ── */
+.eld-form-summary {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface2);
+}
+.eld-form-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-1);
+  overflow: hidden;
+}
+.eld-form-summary-cell {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px var(--sp-2);
+  border-right: 1px solid var(--c-border-s);
+  gap: 5px;
+}
+.eld-form-summary-cell:last-child { border-right: none; }
+/* Total On-Duty cell — stronger background to signal it's a derived total */
+.eld-form-summary-total {
+  background: rgba(255,255,255,.04);
+  border-left: 1px solid var(--c-border);
+}
+.eld-form-summary-swatch {
+  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+}
+.eld-form-summary-name {
+  font-size: var(--t-xs); color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .4px; text-align: center;
+  line-height: 1.3; font-weight: 400;
+}
+.eld-form-summary-total .eld-form-summary-name {
+  color: var(--c-text-2); font-weight: 500;
+}
+.eld-form-summary-val {
+  font-family: var(--mono); font-size: 14px; font-weight: 700;
+  color: var(--c-text); letter-spacing: -.2px;
+}
+
+/* ── Remarks — ruled logbook entries ── */
+.eld-form-remarks {
+  padding: var(--sp-4) var(--sp-4);    /* was --sp-3 top — more breathing room */
+}
+.eld-form-remarks-label {
+  font-size: var(--t-xs); font-weight: 600; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  display: block; margin-bottom: var(--sp-3);  /* was --sp-2 — more air before entries */
+}
+.eld-form-remarks-entries {
+  display: flex; flex-direction: column; gap: 0;
+}
+.eld-form-remark-row {
+  display: flex; align-items: baseline; gap: var(--sp-2);
+  padding: 7px 0;                      /* was 5px — compliance notes need breathing room */
+  border-bottom: 1px solid var(--c-border-s);
+  font-size: var(--t-sm); line-height: 1.55;
+}
+.eld-form-remark-row:last-child { border-bottom: none; }
+.eld-form-remark-num {
+  flex-shrink: 0; font-size: var(--t-xs); color: var(--c-muted);
+  font-family: var(--mono); min-width: 16px; font-weight: 600;
+}
+.eld-form-remark-text {
+  color: var(--c-text);                /* was --c-text-2 — compliance notes are primary content */
+  line-height: 1.55;
+}
+
+/* ── Route Map ───────────────────────────────────────────────────────────── */
+.route-map-wrap { display: flex; flex-direction: column; gap: 14px; }
+.route-provider-row {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+}
+.provider-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  border-radius: var(--radius-xs); border: 1px solid;
+}
+.provider-badge.live     { color: var(--c-success); border-color: rgba(14,165,114,.3); background: rgba(14,165,114,.07); }
+.provider-badge.fallback { color: var(--c-muted);   border-color: var(--c-border);     background: var(--c-surface2); }
+.route-totals {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--c-text-2);
+}
+.leaflet-map {
+  width: 100%; height: 360px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border);
+  overflow: hidden; z-index: 0;
+}
+.map-no-coords {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--c-surface2); border: 1px solid var(--c-border);
+  border-radius: var(--radius-md); padding: 14px;
+  font-size: 12px; color: var(--c-muted); line-height: 1.6;
+}
+.map-no-coords code {
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius-xs); padding: 1px 5px; font-size: 11px; color: var(--c-accent);
+}
+.route-map-loading {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  height: 180px; color: var(--c-muted); font-size: 13px;
+}
+.route-map-error {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(224,62,62,.07); border: 1px solid rgba(224,62,62,.2);
+  border-radius: var(--radius-md); padding: 14px 16px; color: var(--c-danger);
+}
+.route-map-error strong { display: block; margin-bottom: 3px; font-size: 12px; }
+.route-map-error p { font-size: 12px; color: var(--c-text-2); margin: 0; }
+.live-badge { background: rgba(14,165,114,.12) !important; color: var(--c-success) !important; }
+
+/* ── Warnings & Assumptions ──────────────────────────────────────────────── */
+.notices-group { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+.notice-item {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  border-radius: var(--r-2); padding: var(--sp-2) var(--sp-3);
+  font-size: var(--t-base); line-height: 1.5; border: 1px solid;
+}
+.notice-icon { flex-shrink: 0; margin-top: 1px; }
+.notice-danger { background: rgba(224,62,62,.07); border-color: rgba(224,62,62,.2); color: var(--c-danger); }
+.notice-warn   { background: rgba(232,150,10,.07); border-color: rgba(232,150,10,.2); color: var(--c-warn); }
+.notice-info   { background: rgba(79,142,247,.07);  border-color: rgba(79,142,247,.2);  color: var(--c-accent); }
+
+/* ── Assumptions detail list ─────────────────────────────────────────────── */
+/* Audit/explanation section — intentional and readable, not a debug table.  */
+/* Value leads the eye; label identifies it. Both are clearly visible.       */
+.assump-detail-list {
+  list-style: none;
+  margin-top: var(--sp-3);
+  border: 1px solid var(--c-border);       /* added — gives the list a contained feel */
+  border-radius: var(--r-2);
+  overflow: hidden;
+  background: var(--c-surface2);           /* added — slight lift from page background */
+}
+.assump-detail-row {
+  display: flex; gap: var(--sp-4); align-items: baseline;
+  padding: 8px var(--sp-3);               /* was 6px 0 — more breathing room, inset from edges */
+  border-bottom: 1px solid var(--c-border-s);
+  font-size: var(--t-sm);
+}
+.assump-detail-row:last-child { border-bottom: none; }
+
+/* Label — identifies the assumption, clearly readable */
+.assump-detail-label {
+  flex-shrink: 0; min-width: 140px;       /* was 130px — slightly more room */
+  font-size: 11px;                        /* was --t-xs (10px) — one step up */
+  font-weight: 500;
+  color: var(--c-text-2);                 /* unchanged — secondary but visible */
+  letter-spacing: 0;
+}
+
+/* Value — the actual content, primary read in each row */
+.assump-detail-msg {
+  color: var(--c-text);                   /* was --c-muted — lifted to primary text */
+  line-height: 1.55;
+  font-size: 11px;                        /* was --t-sm (11px) — explicit, unchanged */
+}
+
+/* Keep legacy code class so nothing breaks if referenced elsewhere */
+.assump-detail-code { display: none; }
+
+/* ── Empty fallback states ───────────────────────────────────────────────── */
+.eld-empty,
+.timeline-empty {
+  padding: var(--sp-6) var(--sp-5);
+  text-align: center;
+  font-size: var(--t-base);
+  color: var(--c-muted);
+  background: transparent;
+}
+
+/* ── Header Duty Control ─────────────────────────────────────────────────── */
+/*                                                                            */
+/* Visual language: matches the history button — bordered, compact, muted.  */
+/* Secondary utility feature, not a primary action.                          */
+/* Three states: idle (Off Duty) · active (On Duty) · ended                 */
+
+.hdc-root { position: relative; }
+
+/* ── Pill — the always-visible collapsed control ── */
+.hdc-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: transparent;
+  border: 1px solid var(--c-border);   /* matches .hst-btn — consistent header controls */
+  border-radius: var(--r-2);
+  padding: 4px 8px;
+  cursor: default; user-select: none;
+  transition: border-color .15s, background .15s;
+}
+.hdc-pill:hover {
+  border-color: var(--c-text-2);
+  background: rgba(255,255,255,.03);
+}
+/* Open state — matches hst-btn-open */
+.hdc-pill-open {
+  border-color: var(--c-text-2);
+  background: rgba(255,255,255,.04);
+}
+/* Active state — subtle green tint on the border only */
+.hdc-pill-active {
+  border-color: rgba(14,165,114,.35);
+}
+.hdc-pill-active:hover {
+  border-color: rgba(14,165,114,.55);
+}
+
+/* Status dot — small green indicator, only shown when active */
+.hdc-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--c-success);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(14,165,114,.2);
+}
+
+/* "Session Tracker" label — always present, muted */
+.hdc-label {
+  font-size: 11px; font-weight: 500; color: var(--c-muted);
+  letter-spacing: .1px; white-space: nowrap;
+}
+
+/* Separator dot between label and status */
+.hdc-sep {
+  font-size: 10px; color: var(--c-border);
+  flex-shrink: 0; line-height: 1;
+}
+
+/* Status text — Off Duty / On Duty / Ended */
+.hdc-status-text {
+  font-size: 11px; font-weight: 500; color: var(--c-muted);
+  white-space: nowrap;
+}
+.hdc-status-on    { color: var(--c-success); font-weight: 600; }
+.hdc-status-ended { color: var(--c-muted);   font-weight: 400; }
+
+/* Drive/Duty remaining — shown only when active */
+/* Hidden on narrow screens via media query below */
+.hdc-status-detail {
+  font-size: 10px; font-weight: 400; color: var(--c-text-2);
+  font-family: var(--mono); white-space: nowrap;
+  letter-spacing: -.1px;
+}
+
+/* Toggle switch */
+.hdc-toggle {
+  position: relative; width: 26px; height: 15px; /* slightly smaller than before */
+  border-radius: 8px; border: none; cursor: pointer;
+  background: var(--c-border); transition: background .2s;
+  flex-shrink: 0; padding: 0;
+}
+.hdc-toggle-on { background: var(--c-success); }
+.hdc-toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #fff; transition: transform .2s; display: block;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+.hdc-toggle-on .hdc-toggle-thumb { transform: translateX(11px); }
+
+/* Chevron button */
+.hdc-chevron-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--c-muted); padding: 1px; border-radius: var(--r-1);
+  transition: color .15s; flex-shrink: 0;
+}
+.hdc-chevron-btn:hover { color: var(--c-text-2); }
+
+/* ── Detail panel — popover, not a heavy card ── */
+.hdc-panel {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  width: 272px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-md);
+  z-index: 200; overflow: hidden;
+}
+
+/* Panel header */
+.hdc-panel-header {
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--c-border-s);
+  background: var(--c-surface2);
+}
+.hdc-panel-title {
+  display: block;
+  font-size: 11px; font-weight: 600; color: var(--c-text-2);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.hdc-panel-note {
+  display: block;
+  font-size: 10px; color: var(--c-muted);
+  margin-top: 3px; line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Idle state body */
+.hdc-panel-idle {
+  padding: var(--sp-3);
+  font-size: var(--t-base); color: var(--c-muted); line-height: 1.5;
+}
+
+/* Active/ended body */
+.hdc-panel-body {
+  padding: var(--sp-3);
+  display: flex; flex-direction: column; gap: var(--sp-2);
+}
+
+/* Clock grid */
+.hdc-clock-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--c-border-s);
+}
+.hdc-clock-cell  { display: flex; flex-direction: column; gap: 2px; }
+.hdc-clock-label {
+  font-size: 9px; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px; opacity: .7;
+}
+.hdc-clock-value { font-size: 12px; font-weight: 600; color: var(--c-text-2); }
+.hdc-clock-mono  { font-family: var(--mono); font-size: 12px; }
+
+.hdc-frozen-note {
+  display: flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--t-xs); color: var(--c-muted); font-style: italic; opacity: .8;
+}
+
+/* Section label */
+.hdc-section-label {
+  font-size: 9px; color: var(--c-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-top: 2px; opacity: .7;
+}
+
+/* Timing rows */
+.hdc-timing-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.hdc-timing-row.hdc-timing-warn .hdc-timing-label { color: var(--c-danger); }
+.hdc-timing-label { font-size: 12px; color: var(--c-muted); flex: 1; }
+.hdc-timing-value { font-size: 12px; font-weight: 600; font-family: var(--mono); white-space: nowrap; }
+.hdc-gauge-track {
+  width: 100%; height: 3px; background: var(--c-border-s);
+  border-radius: 2px; overflow: hidden; flex-basis: 100%;
+}
+.hdc-gauge-fill { height: 100%; border-radius: 2px; transition: width .5s ease, background .3s; }
+
+/* Panel footer */
+.hdc-panel-footer {
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--c-border-s);
+  background: var(--c-surface2);
+}
+.hdc-reset-btn {
+  width: 100%; background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-2);
+  color: var(--c-muted); font-size: 11px; font-weight: 500;
+  padding: 6px var(--sp-3); cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.hdc-reset-btn:hover {
+  color: var(--c-text-2);
+  border-color: var(--c-text-2);
+}
+
+/* ── Responsive — hide detail text on narrow screens ── */
+@media (max-width: 640px) {
+  .hdc-status-detail { display: none; }  /* hide Drive/Duty values, keep label + status */
+}
+@media (max-width: 480px) {
+  .hdc-panel  { position: fixed; top: 58px; right: 10px; left: 10px; width: auto; }
+  .hdc-label  { display: none; }          /* hide "Session Tracker" text, keep dot + status */
+  .hdc-sep    { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINT STYLES — ELD Log Sheets
+   ───────────────────────────────────────────────────────────────────────────
+   Triggered by window.print() from the ELD tab toolbar.
+   "Save as PDF" in the browser print dialog produces a portable document.
+
+   Root cause of blank PDF (previous approach):
+     #root { display: none } hides the entire React tree. A child element
+     cannot override display:none on an ancestor — CSS inheritance does not
+     work that way. The [data-print-target] element was invisible before the
+     browser even evaluated its own rule.
+
+   Correct approach:
+     Leave #root and .app visible. Hide every part of the app shell that is
+     NOT the ELD cards: header, sidebar, tab bar, non-ELD tab content.
+     The ELD cards stay in normal document flow and print as-is.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media print {
+
+  /* ── Force color rendering — required for duty line colors ── */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ── Page setup ── */
+  /* Letter landscape: 279mm × 216mm.                                       */
+  /* 6mm/8mm margins give 263mm × 204mm usable — 4mm wider than before,    */
+  /* letting the log sheet breathe without risking a second page.           */
+  @page {
+    size: letter landscape;
+    margin: 6mm 8mm;
+  }
+
+  /* ── Reset body/html for clean print layout ── */
+  html, body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ── Hide app chrome — everything except the ELD cards ── */
+  .app-header          { display: none !important; }
+  .form-panel          { display: none !important; }
+  .tab-bar             { display: none !important; }
+  .eld-print-toolbar   { display: none !important; }
+
+  /* ── Reset layout so ELD cards fill the page ── */
+  .app-main {
+    display: block !important;
+    min-height: unset !important;
+  }
+  .results-panel {
+    display: block !important;
+    background: #fff !important;
+    min-height: unset !important;
+    padding: 0 !important;
+  }
+  .results-content {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .tab-content {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* ── ELD container ── */
+  .eld-logs {
+    display: block !important;
+    background: #fff !important;
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* ── Each day card = one page ── */
+  /* overflow:visible is critical — absolute-positioned duty lines are       */
+  /* clipped by overflow:hidden in some PDF renderers.                       */
+  /* display:block ensures break-inside is honoured — flex/grid containers  */
+  /* can suppress fragmentation hints in some engines.                       */
+  .eld-form-card {
+    display: block !important;
+    page-break-before: always;
+    break-before: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border: 1px solid #ccc !important;
+    border-top: 2px solid #1a56db !important;
+    border-radius: 0 !important;       /* no radius in print — saves a hairline of space */
+    background: #fff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    margin-bottom: 0 !important;
+  }
+  .eld-form-card:first-child {
+    page-break-before: avoid;
+    break-before: avoid;
+  }
+
+  /* ── Document header — compact in print ── */
+  /* Reduce padding and day-number size to recover ~20px vs screen.         */
+  .eld-form-card-header {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    gap: 14px !important;
+    align-items: center !important;
+    background: #f5f5f5 !important;
+    border-bottom: 1px solid #ccc !important;
+    padding: 8px 14px !important;      /* was 7px 12px — slightly more room */
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .eld-form-day-label    { color: #777 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-form-day-num      { color: #1a56db !important; font-size: 24px !important; line-height: 1 !important; } /* was 22px */
+  .eld-form-day-date     { color: #555 !important; font-size: 10px !important; } /* was 9px */
+  .eld-form-header-day   { gap: 2px !important; padding-right: 12px !important; border-right-color: #ccc !important; }
+  .eld-form-header-center { gap: 4px !important; padding: 0 12px !important; }
+  .eld-form-header-reg   { color: #111 !important; font-size: 12px !important; } /* was 11px */
+  .eld-form-header-cycle { color: #555 !important; font-size: 10px !important; } /* was 9px */
+  .eld-form-header-right { padding-left: 12px !important; border-left-color: #ccc !important; }
+  .eld-form-header-field { gap: 3px !important; }
+  .eld-form-field-label  { color: #777 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-form-field-value  { color: #111 !important; font-size: 13px !important; } /* was 12px */
+  .eld-form-miles-val    { color: #0a7a52 !important; }
+
+  /* ── RODS metadata — compact rows ── */
+  .eld-rods-meta {
+    display: block !important;
+    background: #fafafa !important;
+    border-bottom-color: #ccc !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .eld-rods-helper { display: none !important; }
+  .eld-rods-row   { border-bottom-color: #eee !important; }
+  .eld-rods-cell  { border-right-color: #eee !important; padding: 5px 12px !important; } /* was 4px 10px — slightly more room */
+  .eld-rods-label { color: #888 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-rods-value { color: #111 !important; font-size: 12px !important; } /* was 11px */
+  .eld-rods-empty { color: #bbb !important; opacity: 1 !important; font-size: 11px !important; }
+  .eld-rods-cell:has(.eld-rods-empty) .eld-rods-label { opacity: 0.6 !important; }
+
+  /* ── Duty grid — compact rows, never splits ── */
+  .eld-form-grid {
+    display: block !important;
+    border-bottom: 1px solid #ccc !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: avoid;
+    break-after: avoid;
+    overflow: visible !important;
+  }
+  .eld-form-header-row {
+    background: #f5f5f5 !important;
+    border-bottom: 1px solid #ccc !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .eld-form-duty-row {
+    border-bottom: 1px solid #ddd !important;
+    min-height: 38px !important;       /* was 34px — more readable grid lines */
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .eld-form-track-area {
+    overflow: visible !important;
+  }
+  .eld-form-ampm-row     { background: #f5f5f5 !important; border-bottom-color: #ddd !important; height: 13px !important; } /* was 12px */
+  .eld-form-ampm-label   { color: #888 !important; font-size: 8px !important; }  /* was 7px */
+  .eld-form-noon-line    { background: #ccc !important; }
+  .eld-form-track-ruled  { background: #fff !important; }
+  .eld-form-row-label {
+    color: #333 !important;
+    border-right-color: #ccc !important;
+    font-size: 10px !important;        /* was 9px — more readable */
+    width: 110px !important;           /* was 100px — labels no longer cramped */
+    padding: 4px 10px !important;      /* was 4px 8px */
+  }
+  .eld-form-hour-label { color: #555 !important; font-size: 8px !important; }  /* was 7px */
+  .eld-form-hour-col   { border-right-color: #ddd !important; padding-bottom: 2px !important; }
+
+  /* Grid lines */
+  .eld-form-col-line       { background: #bbb !important; opacity: 1 !important; }
+  .eld-form-col-line-major { background: #888 !important; opacity: 1 !important; }
+  .eld-form-halfhour-tick  { background: #aaa !important; opacity: 1 !important; }
+
+  /* Duty lines */
+  .eld-form-line-h { border-top-width: 3px !important; opacity: 1 !important; }
+  .eld-form-line-v { background: #444 !important; opacity: .6 !important; }
+
+  /* Total column */
+  .eld-form-total-col {
+    border-left-color: #ccc !important;
+    width: 56px !important;            /* was 52px — matches wider row labels */
+  }
+  .eld-form-total-heading { color: #555 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-form-total-value   { color: #111 !important; font-size: 12px !important; } /* was 11px */
+  .eld-form-total-zero    { color: #bbb !important; }
+
+  /* ── Hours summary — compact, locked to 5 columns ── */
+  .eld-form-summary {
+    background: #f9f9f9 !important;
+    border-bottom: 1px solid #ccc !important;
+    padding: 7px 12px !important;      /* was 6px 10px — slightly more room */
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .eld-form-summary-grid {
+    border-color: #ccc !important;
+    overflow: visible !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+  .eld-form-summary-cell {
+    border-right-color: #ddd !important;
+    padding: 7px 8px !important;       /* was 6px — slightly more room */
+    gap: 4px !important;
+  }
+  .eld-form-summary-name  { color: #555 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-form-summary-val   { color: #111 !important; font-size: 13px !important; } /* was 12px */
+  .eld-form-summary-total {
+    background: #f0f0f0 !important;
+    border-left-color: #ccc !important;
+  }
+  .eld-form-summary-total .eld-form-summary-name { color: #333 !important; }
+  .eld-form-summary-swatch { width: 7px !important; height: 7px !important; } /* was 6px */
+
+  /* ── Remarks — compact, no mid-entry splits ── */
+  .eld-form-remarks {
+    padding: 8px 14px !important;      /* was 8px 12px — matches header horizontal padding */
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .eld-form-remarks-label {
+    color: #555 !important;
+    font-size: 9px !important;         /* was 8px */
+    margin-bottom: 5px !important;     /* was 4px */
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .eld-form-remarks-entries {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .eld-form-remark-row {
+    border-bottom-color: #eee !important;
+    padding: 4px 0 !important;
+    font-size: 11px !important;        /* was 10px */
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .eld-form-remark-num  { color: #888 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-form-remark-text { color: #222 !important; font-size: 11px !important; } /* was 10px */
+
+  /* ── Certification footer — compact, always together ── */
+  .eld-certification {
+    background: #f5f5f5 !important;
+    border-top: 1px solid #bbb !important;
+    padding: 9px 14px 9px !important;  /* was 8px 12px — matches horizontal padding */
+    gap: 7px !important;               /* was 6px */
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-before: avoid;
+    break-before: avoid;
+  }
+  .eld-cert-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .eld-cert-sig-block { gap: 5px !important; }
+  .eld-cert-date-block { gap: 5px !important; }
+  .eld-cert-field-label { color: #666 !important; font-size: 9px !important; }  /* was 8px */
+  .eld-cert-line        { background: #333 !important; opacity: .5 !important; }
+  .eld-cert-name        { color: #111 !important; font-size: 12px !important; } /* was 11px */
+  .eld-cert-name-empty  { color: #999 !important; font-size: 11px !important; } /* was 10px */
+  .eld-cert-date-value  { color: #333 !important; font-size: 11px !important; } /* was 10px */
+  .eld-cert-statement {
+    color: #333 !important;
+    border-top: none !important;
+    padding-top: 0 !important;
+    font-size: 10px !important;        /* was 9px */
+    opacity: 1 !important;
+    orphans: 3;
+    widows: 3;
+  }
+
+}
+
+
+/* ── RODS collapsible section (TripForm) ─────────────────────────────────── */
+
+.rods-section {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--c-border);   /* was --c-border-s — card needs a visible boundary */
+  border-radius: var(--r-2);
+  overflow: hidden;
+}
+
+/* Toggle button — the card header */
+.rods-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--c-surface2);
+  border: none; cursor: pointer;
+  padding: 11px var(--sp-3);           /* was 10px — 1px more vertical presence */
+  width: 100%;
+  transition: background .15s;
+  gap: var(--sp-3);
+}
+.rods-toggle:hover { background: var(--c-surface3); }
+.rods-toggle-open  { background: var(--c-surface3); }
+
+/* Left side — icon + stacked text */
+.rods-toggle-left {
+  display: flex; align-items: center; gap: 9px;
+  flex: 1; min-width: 0;
+}
+.rods-toggle-icon { color: var(--c-text-2); flex-shrink: 0; opacity: .8; } /* was --c-muted/.7 — slightly more visible */
+
+/* Stacked text block */
+.rods-toggle-text {
+  display: flex; flex-direction: column; gap: 3px; /* was 2px — labels breathe */
+  min-width: 0;
+}
+.rods-toggle-label {
+  font-size: 12px; font-weight: 600; color: var(--c-text); /* was --c-text-2 — title is primary */
+  letter-spacing: -.1px; line-height: 1.2;
+}
+/* Subtitle — secondary context, clearly below the title */
+.rods-toggle-sub {
+  display: block;
+  font-size: 10px; color: var(--c-muted);
+  font-weight: 400; letter-spacing: 0;
+  line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Right side — badge + chevron */
+.rods-toggle-right {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0; color: var(--c-muted);
+}
+
+/* Completion pill */
+.rods-filled-badge {
+  font-size: 10px; font-weight: 500;
+  background: var(--c-surface3);
+  color: var(--c-muted);
+  border: 1px solid var(--c-border-s);
+  border-radius: 20px;
+  padding: 1px 7px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+/* All fields filled — accent tint */
+.rods-filled-badge-complete {
+  background: var(--c-accent-dim);
+  color: var(--c-accent);
+  border-color: rgba(79,142,247,.2);
+}
+
+/* Expanded fields area */
+.rods-fields {
+  display: flex; flex-direction: column;
+  gap: var(--sp-2);                    /* 8px between fields */
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+
+/* Each field row — label above input, full width */
+.rods-field-row {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* Visual group breaks — add 4px extra above every 3rd field (1-indexed)   */
+/* Groups: [Driver, Co-Driver] · [Carrier, Address] · [Vehicle, Shipper]   */
+/* This uses the gap between rows, not borders, so it stays lightweight.   */
+.rods-field-row:nth-child(3),
+.rods-field-row:nth-child(5) {
+  margin-top: var(--sp-1);             /* 4px extra = 12px total gap before group start */
+  padding-top: var(--sp-2);            /* 8px inner padding */
+  border-top: 1px solid var(--c-border-s); /* hairline separator between groups */
+}
+
+.rods-field-label {
+  font-size: 11px; font-weight: 500;
+  color: var(--c-text-2);
+  letter-spacing: .1px; line-height: 1;
+}
+
+/* Input — full width, inherits width:100% from .field-input               */
+/* text-overflow:ellipsis shows … when unfocused value exceeds input width  */
+.rods-input {
+  font-size: 13px !important;
+  padding: 8px 10px !important;
+  text-overflow: ellipsis;
+}
+.rods-input:focus {
+  text-overflow: clip;                 /* show full value while editing */
+}
+
+.rods-hint {
+  font-size: 10px; color: var(--c-muted); line-height: 1.5;
+  opacity: .6;
+  margin-top: var(--sp-1);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--c-border-s);
+}
+
+/* ── ELD RODS metadata grid ──────────────────────────────────────────────── */
+/*                                                                            */
+/* Renders the FMCSA-required log header fields (49 CFR 395.8) as a ruled   */
+/* two-column grid that mirrors the paper log form layout.                   */
+/* Empty fields show a dash — the grid is always present so the log looks   */
+/* complete even when the driver hasn't filled in optional fields.           */
+
+.eld-rods-meta {
+  display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface2);
+}
+
+/* Helper banner — shown when no driver info is provided */
+/* Sits above the field rows, inside the meta block.     */
+.eld-rods-helper {
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 8px var(--sp-4);
+  border-bottom: 1px solid var(--c-border-s);
+  background: rgba(79,142,247,.05);
+  font-size: 11px; color: var(--c-muted);
+  line-height: 1.5;
+}
+.eld-rods-helper svg { flex-shrink: 0; margin-top: 1px; color: var(--c-accent); opacity: .7; }
+
+.eld-rods-row {
+  display: flex;
+  border-bottom: 1px solid var(--c-border-s);
+}
+.eld-rods-row:last-child { border-bottom: none; }
+
+.eld-rods-cell {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 9px var(--sp-4);
+  border-right: 1px solid var(--c-border-s);
+  flex: 1;
+  min-width: 0;
+}
+.eld-rods-cell:last-child { border-right: none; }
+
+/* Wide cell takes 2/3 of the row */
+.eld-rods-cell-wide { flex: 2; }
+
+/* Label — quiet, lowercase, just enough to identify the field */
+.eld-rods-label {
+  font-size: var(--t-xs); font-weight: 400; color: var(--c-muted);
+  text-transform: none; letter-spacing: 0;
+  white-space: nowrap; line-height: 1;
+  transition: opacity 0.2s;           /* added — smooth transition */
+}
+
+/* Value — the data is what matters */
+.eld-rods-value {
+  font-size: 13px; font-weight: 500; color: var(--c-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font);
+  line-height: 1.3; letter-spacing: -.1px;
+  transition: opacity 0.2s, color 0.2s;  /* added — smooth transition */
+}
+
+/* Empty placeholder — dash, quieter than real data */
+.eld-rods-empty {
+  color: var(--c-muted); 
+  font-weight: 400; 
+  font-style: italic;
+  font-size: 11px;                    /* was 12px — smaller */
+  opacity: 0.5;                       /* added — much quieter */
+}
+
+/* When a field is empty, also quiet the label */
+.eld-rods-cell:has(.eld-rods-empty) .eld-rods-label {
+  opacity: 0.5;                       /* added — quiet the label too */
+}
+
+/* ── ELD Certification footer ────────────────────────────────────────────── */
+/*                                                                            */
+/* ── ELD Certification footer ────────────────────────────────────────────── */
+/*                                                                            */
+/* Required by 49 CFR 395.8. Layout mirrors a real paper log form:          */
+/*   Row 1 — label above line, name/date below (signature + date side by    */
+/*            side, signature takes 65%, date takes 30%)                    */
+/*   Row 2 — certification statement, full width, primary text weight       */
+
+.eld-certification {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  border-top: 2px solid var(--c-border);
+  background: var(--c-surface2);
+}
+
+/* Row 1: signature + date side by side */
+.eld-cert-row {
+  display: flex; align-items: flex-start; gap: var(--sp-6);
+}
+
+/* Signature block — wider */
+.eld-cert-sig-block {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  flex: 13;                            /* ~65% */
+}
+
+/* Date block — narrower */
+.eld-cert-date-block {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  flex: 6;                             /* ~30% */
+  min-width: 90px;
+}
+
+/* Field label above the line — small, muted, uppercase */
+.eld-cert-field-label {
+  font-size: var(--t-xs); color: var(--c-muted);
+  font-weight: 500; letter-spacing: .5px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* The signature line — clearly visible, not a hairline */
+.eld-cert-line {
+  display: block;
+  height: 1px;
+  background: var(--c-text-2);         /* stronger than border — this is the focal element */
+  width: 100%;
+  opacity: .4;
+}
+
+/* Driver name below the line — readable, mixed case */
+.eld-cert-name {
+  font-size: 12px; font-weight: 500; color: var(--c-text);
+  letter-spacing: -.1px; line-height: 1.3;
+}
+.eld-cert-name-empty {
+  color: var(--c-muted); font-weight: 400; font-style: italic;
+}
+
+/* Date value below the date line */
+.eld-cert-date-value {
+  font-size: 11px; font-weight: 400; color: var(--c-text-2);
+  font-family: var(--mono); letter-spacing: .1px;
+  line-height: 1.3;
+}
+
+/* Row 2: certification statement — primary text, not a footnote */
+.eld-cert-statement {
+  font-size: 11px; color: var(--c-text);
+  font-style: normal; font-weight: 400;
+  line-height: 1.6;
+  border-top: 1px solid var(--c-border-s);
+  padding-top: var(--sp-3);
+  margin: 0;
+  opacity: .75;
+}
+
+/* Legacy stubs — kept so nothing breaks */
+.eld-cert-sig        { display: none; }
+.eld-cert-label      { display: none; }
+.eld-cert-date-label { display: none; }
