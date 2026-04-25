@@ -1,4 +1,4 @@
-# Driver Log Book — HOS-Compliant Route Planning & Driver Log Sheet Generator
+# ELD Trip Planner — HOS-Compliant Route Planning & Driver Log Sheet Generator
 
 ## Overview
 
@@ -14,7 +14,7 @@ Built for property-carrying drivers operating under the **70-hour / 8-day cycle*
 - 70-hour / 8-day cycle hours input and tracking
 - HOS compliance checking with compliant / cycle-low / cycle-exhausted status
 - Automatic 30-minute break scheduling after 8 cumulative driving hours
-- Sleeper berth and rest reset handling (full 10h and split provision)
+- Sleeper berth reset handling (10-hour reset, resets 11h driving and 14h on-duty windows)
 - Fuel stop planning every 1,000 miles
 - Route summary with total distance, on-road days, and cycle hours remaining
 - Stop-by-stop timeline with arrival times, durations, and departures
@@ -144,12 +144,12 @@ Four built-in demo scenarios are available in the sidebar under **Demo scenarios
 
 | Scenario | Description |
 |---|---|
-| **Short Haul** | ~180 mi, same-day, no breaks required |
+| **Short Haul** | ~230 mi, same-day, no breaks required |
 | **Break Required** | ~520 mi, triggers mandatory 30-min off-duty break |
-| **Fuel Stop** | ~1,100 mi, Long-haul route with fuel stop and multi-day ELD logs |
+| **Fuel Stop** | ~1,100 mi, long-haul route with fuel stop and sleeper berth reset |
 | **Cycle Exhausted** | 70h used at departure, shows cycle-limit warning |
 
-Click any demo button to pre-fill the form, then click Plan Trip..
+Click any demo button to pre-fill the form, then click **Plan Trip**.
 
 ---
 
