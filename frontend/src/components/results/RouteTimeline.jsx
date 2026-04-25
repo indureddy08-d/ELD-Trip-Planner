@@ -57,49 +57,11 @@ const STOP_BASE = {
 
 // ── Per-stop config resolver ──────────────────────────────────────────────────
 //
-// Derives the display label and sublabel from the stop's actual data.
-// This is where split sleeper differentiation happens — the base config
-// can't express per-stop variations, but the stop's duration_hours can.
-
-const SPLIT_SB_LONG  = 8.0;
-const SPLIT_SB_SHORT = 2.0;
+// Returns the display config for a stop. All sleeper stops use the same
+// 10h label — split sleeper is not used in this planner.
 
 function resolveStopConfig(stop) {
-  const base = STOP_BASE[stop.stop_type] ?? STOP_BASE.rest;
-
-  if (stop.stop_type !== "sleeper") return base;
-
-  const dur = stop.duration_hours;
-
-  // Full 10h reset
-  if (dur >= 9.9) {
-    return {
-      ...base,
-      label:    "Sleeper Berth (10h)",
-      sublabel: "Off-duty · full 10h rest · resets 11h driving & 14h on-duty windows",
-    };
-  }
-
-  // Split long period (8h)
-  if (Math.abs(dur - SPLIT_SB_LONG) < 0.1) {
-    return {
-      ...base,
-      label:    "Sleeper Berth — Long Split (8h)",
-      sublabel: "Off-duty · first half of split provision (49 CFR 395.1(g)) · 2h short period follows",
-    };
-  }
-
-  // Split short period (2h)
-  if (Math.abs(dur - SPLIT_SB_SHORT) < 0.1) {
-    return {
-      ...base,
-      label:    "Sleeper Berth — Short Split (2h)",
-      sublabel: "Off-duty · completes split pairing · resets 11h driving & 14h on-duty windows",
-    };
-  }
-
-  // Any other duration — fall back to base
-  return base;
+  return STOP_BASE[stop.stop_type] ?? STOP_BASE.rest;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

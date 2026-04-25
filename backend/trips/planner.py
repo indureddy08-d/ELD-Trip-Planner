@@ -18,7 +18,6 @@ from compliance.hos_rules import (
     CYCLE_LIMIT, MANDATORY_BREAK_AFTER, MANDATORY_BREAK_DURATION,
     FUEL_INTERVAL_MILES, PICKUP_DURATION, DROPOFF_DURATION,
     AVG_SPEED_MPH, FUEL_STOP_DURATION, PRE_TRIP_DURATION,
-    SPLIT_SB_LONG, SPLIT_SB_SHORT,
 )
 from logs.generator import generate as generate_eld_logs
 from trips.invariants import assert_plan_invariants, assert_cross_layer_consistency
@@ -144,15 +143,6 @@ class _ShiftState:
     miles_covered: float = 0.0     # total miles covered so far
     drive_since_break: float = 0.0 # driving hours since last qualifying break
 
-    # ── Split sleeper berth tracking (49 CFR 395.1(g)) ───────────────────
-    # The split provision allows the required 10h off-duty to be split into:
-    #   - A "long" period of ≥8h in the sleeper berth
-    #   - A "short" period of ≥2h (sleeper berth or off-duty)
-    # When a long SB period is taken but the full 10h reset hasn't happened,
-    # we track it so the next short period can complete the pairing.
-    # split_sb_pending: hours banked in the long SB period (0 = no pending split)
-    split_sb_pending: float = 0.0
-
 
 # ── Stop schedule builder ─────────────────────────────────────────────────────
 
@@ -210,36 +200,11 @@ def _build_stop_schedule(
 
         elif stop_type == "sleeper":
             # 10-hour sleeper berth resets the entire shift window.
-            # Split provision (49 CFR 395.1(g)): if this is a LONG period
-            # (≥8h) but less than the full 10h reset, bank it as a pending
-            # split. The next short period (≥2h) will complete the pairing
-            # and reset the 11h/14h clocks without counting either period
-            # against the 14-hour driving window.
-            if duration >= REQUIRED_OFF_DUTY:
-                # Full 10h reset — clears everything including any pending split
-                s.drive_today = 0.0
-                s.on_duty_today = 0.0
-                s.drive_since_break = 0.0
-                s.split_sb_pending = 0.0
-            elif duration >= SPLIT_SB_LONG and s.split_sb_pending == 0.0:
-                # Long split period — bank it, partial reset of break accumulator
-                s.split_sb_pending = duration
-                s.drive_since_break = 0.0
-                # 11h/14h clocks are NOT reset yet — they reset when the short
-                # period completes the pairing.
-            elif duration >= SPLIT_SB_SHORT and s.split_sb_pending >= SPLIT_SB_LONG:
-                # Short period completes the split pairing — full reset
-                s.drive_today = 0.0
-                s.on_duty_today = 0.0
-                s.drive_since_break = 0.0
-                s.split_sb_pending = 0.0
-            else:
-                # Any other sleeper stop (e.g. partial) — treat as full reset
-                # to avoid leaving the driver in an ambiguous state.
-                s.drive_today = 0.0
-                s.on_duty_today = 0.0
-                s.drive_since_break = 0.0
-                s.split_sb_pending = 0.0
+            # Clears the 11h driving limit, 14h on-duty window, and
+            # the 8h break accumulator for the next shift.
+            s.drive_today = 0.0
+            s.on_duty_today = 0.0
+            s.drive_since_break = 0.0
 
     def _route_location_label(miles_covered: float) -> str:
         """
@@ -288,47 +253,14 @@ def _build_stop_schedule(
                     )
                     continue
 
-                # 11h or 14h window exhausted.
-                # Decision: use split sleeper berth (49 CFR 395.1(g)) or full reset?
-                #
-                # Split is preferred when:
-                #   - No split is already pending (can't nest splits)
-                #   - Remaining trip miles justify it (split saves time vs full 10h)
-                #   - The driver has enough cycle hours left for the short period
-                #
-                # The split saves 2h vs a full 10h reset (8h long + 2h short = 10h
-                # total, but the 14h window is not consumed by either period).
-                # For the planner we always attempt the split when eligible —
-                # it is strictly better for the driver than a full 10h reset.
-
-                if s.split_sb_pending == 0.0:
-                    # Start the split: take the long 8h sleeper berth period.
-                    add_stop(
-                        "sleeper",
-                        _route_location_label(s.miles_covered),
-                        SPLIT_SB_LONG,
-                        "Split sleeper berth — long period (8h, 49 CFR 395.1(g)). "
-                        "A 2h short period will complete the pairing and reset the "
-                        "11h driving and 14h on-duty windows.",
-                    )
-                elif s.split_sb_pending >= SPLIT_SB_LONG:
-                    # Complete the split: take the short 2h period.
-                    add_stop(
-                        "sleeper",
-                        _route_location_label(s.miles_covered),
-                        SPLIT_SB_SHORT,
-                        "Split sleeper berth — short period (2h, 49 CFR 395.1(g)). "
-                        "Pairing complete: 11h driving and 14h on-duty windows reset.",
-                    )
-                else:
-                    # Fallback: full 10h reset (shouldn't normally reach here)
-                    add_stop(
-                        "sleeper",
-                        _route_location_label(s.miles_covered),
-                        REQUIRED_OFF_DUTY,
-                        "Sleeper Berth (10h) — resets the 11h driving and 14h on-duty "
-                        "windows for the next shift (49 CFR 395.3(a)(1))",
-                    )
+                # 11h or 14h window exhausted — insert a 10h sleeper berth reset.
+                add_stop(
+                    "sleeper",
+                    _route_location_label(s.miles_covered),
+                    REQUIRED_OFF_DUTY,
+                    "Sleeper Berth (10h) — resets the 11h driving and 14h on-duty "
+                    "windows for the next shift (49 CFR 395.3(a)(1))",
+                )
                 continue
 
             max_miles = max_drive_h * AVG_SPEED_MPH
@@ -450,7 +382,7 @@ def _build_warnings_and_assumptions(
         {"code": "FUEL_INTERVAL",      "message": f"Fuel stop required at least every {int(FUEL_INTERVAL_MILES):,} miles."},
         {"code": "BREAK_MODEL",        "message": "30-min mandatory break modeled as off-duty (does not consume 14h window)."},
         {"code": "FUEL_BREAK_RESET",   "message": "Fuel stops reset the 8-hour break accumulator per project assumptions."},
-        {"code": "SPLIT_SB",           "message": "Split sleeper berth provision applied when eligible (49 CFR 395.1(g)): 8h long + 2h short periods, neither counting against the 14h driving window."},
+        {"code": "SPLIT_SB",           "message": "Simple 10-hour sleeper berth reset used. Each sleeper stop is 10h and fully resets the 11h driving and 14h on-duty windows."},
         {"code": "ROUTING_PROVIDER",   "message": f"Distance source: {deadhead_provider} (deadhead), {loaded_provider} (loaded)."},
     ])
 
@@ -580,36 +512,16 @@ def _build_instructions(
             n += 1
 
         elif t == "sleeper":
-            # Derive the instruction title from the actual duration so split
-            # sleeper periods are not mislabeled as "10-Hour".
-            if abs(duration - SPLIT_SB_LONG) < 0.1:
-                instr_title = "Sleeper Berth — Long Split (8h)"
-                instr_detail = (
-                    f"{location}. "
-                    f"First half of split provision (49 CFR 395.1(g)) — "
-                    f"2h short period follows to complete the pairing. "
-                    f"Elapsed: {_fmt(arrival)} — resume at {_fmt(departure)}."
-                )
-            elif abs(duration - SPLIT_SB_SHORT) < 0.1:
-                instr_title = "Sleeper Berth — Short Split (2h)"
-                instr_detail = (
-                    f"{location}. "
-                    f"Completes split pairing (49 CFR 395.1(g)) — "
-                    f"resets 11h driving and 14h on-duty windows. "
-                    f"Elapsed: {_fmt(arrival)} — resume at {_fmt(departure)}."
-                )
-            else:
-                instr_title = "Sleeper Berth (10h)"
-                instr_detail = (
-                    f"{location}. "
-                    f"11h driving or 14h on-duty window exhausted — "
-                    f"10h rest resets both windows for the next shift. "
-                    f"Elapsed: {_fmt(arrival)} — resume driving at {_fmt(departure)}."
-                )
             steps.append({
                 "step": n,
-                "instruction": instr_title,
-                "details": instr_detail,
+                "instruction": "Sleeper Berth (10h)",
+                "details": (
+                    f"{location}. "
+                    f"11h driving or 14h on-duty window exhausted — "
+                    f"10h rest resets both windows for the next shift "
+                    f"(49 CFR 395.3(a)(1)). "
+                    f"Elapsed: {_fmt(arrival)} — resume driving at {_fmt(departure)}."
+                ),
             })
             n += 1
 
