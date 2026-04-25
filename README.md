@@ -1,4 +1,4 @@
-# ELD Trip Planner — HOS-Compliant Route Planning & Driver Log Sheet Generator
+# Driver Log Book — HOS-Compliant Route Planning & Driver Log Sheet Generator
 
 ## Overview
 
