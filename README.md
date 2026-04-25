@@ -1,4 +1,4 @@
-# ELD Trip Planner — HOS-Compliant Route Planning & Driver Log Sheet Generator
+# Driver Log Book — HOS-Compliant Route Planning & Driver Log Sheet Generator
 
 ## Overview
 
@@ -146,10 +146,10 @@ Four built-in demo scenarios are available in the sidebar under **Demo scenarios
 |---|---|
 | **Short Haul** | ~180 mi, same-day, no breaks required |
 | **Break Required** | ~520 mi, triggers mandatory 30-min off-duty break |
-| **Fuel Stop** | ~1,100 mi, forces a mid-route fuel stop |
+| **Fuel Stop** | ~1,100 mi, Long-haul route with fuel stop and multi-day ELD logs |
 | **Cycle Exhausted** | 70h used at departure, shows cycle-limit warning |
 
-Click any demo button to pre-fill the form and run the planner immediately.
+Click any demo button to pre-fill the form, then click Plan Trip..
 
 ---
 
