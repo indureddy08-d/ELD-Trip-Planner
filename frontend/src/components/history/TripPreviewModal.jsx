@@ -44,12 +44,15 @@ function PlannerActions({ markers }) {
     <div className="tpm-section">
       <div className="tpm-section-label">Planner actions applied</div>
       <div className="tpm-actions">
-        {actions.map(({ Icon, color, label }, i) => (
-          <div key={i} className="tpm-action-row">
-            <Icon size={12} strokeWidth={2} style={{ color, flexShrink: 0 }} />
-            <span className="tpm-action-label">{label}</span>
-          </div>
-        ))}
+        {actions.map((action, i) => {
+          const ActionIcon = action.Icon;
+          return (
+            <div key={i} className="tpm-action-row">
+              <ActionIcon size={12} strokeWidth={2} style={{ color: action.color, flexShrink: 0 }} />
+              <span className="tpm-action-label">{action.label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

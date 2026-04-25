@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Truck, RotateCcw, XCircle, CheckCircle, BedDouble, FileText } from "lucide-react";
+import { Truck, RotateCcw, XCircle, CheckCircle, BedDouble, FileText, ArrowLeft } from "lucide-react";
 import TripForm from "./components/TripForm";
 import SummaryCard from "./components/results/SummaryCard";
 import RouteTimeline from "./components/results/RouteTimeline";
@@ -28,9 +28,14 @@ export default function App() {
   const { routeData, loading: routeLoading, error: routeError } = useRouteData(form);
   const dutySession = useDutySession(result);
 
-  // Track which preset is currently loaded so TripForm can highlight it.
-  // Any manual edit clears the active preset.
   const [activePresetId, setActivePresetId] = useState(null);
+
+  // Derive mobile view from loading/result/error state directly.
+  // No useEffect needed — this is pure derivation from existing state.
+  // On desktop (>960px) the mobile-hidden class has no effect (CSS only applies it at ≤960px).
+  // On mobile: show results panel whenever loading, result, or error is active.
+  const showingResults = loading || !!result || !!error;
+  const mobileView = showingResults ? "results" : "form";
 
   function handleLoadPreset(preset) {
     loadPreset(preset);
@@ -38,20 +43,18 @@ export default function App() {
   }
 
   function handleChange_(e) {
-    setActivePresetId(null);   // user edited a field — no longer a clean preset
+    setActivePresetId(null);
     handleChange(e);
   }
 
   function handleDismissError() {
-    // Allow the user to dismiss an error without submitting again.
-    // Clears the error banner and returns to the empty state.
     reset();
     setActivePresetId(null);
   }
 
   function handleLoadRecentTrip(trip) {
     loadRecentTrip(trip);
-    setActivePresetId(null);   // recent trip load clears any active preset highlight
+    setActivePresetId(null);
   }
 
   function handleReset() {
@@ -84,8 +87,10 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {/* ── Left panel: form ── */}
-        <aside className="form-panel">
+        {/* ── Form panel ──
+            Desktop: always visible (left sidebar, CSS grid).
+            Mobile:  hidden when mobileView === "results". */}
+        <aside className={`form-panel ${mobileView === "results" ? "mobile-hidden" : ""}`}>
           <TripForm
             form={form}
             onChange={handleChange_}
@@ -101,8 +106,21 @@ export default function App() {
           )}
         </aside>
 
-        {/* ── Right panel: results ── */}
-        <section className="results-panel">
+        {/* ── Results panel ──
+            Desktop: always visible (right panel, CSS grid).
+            Mobile:  hidden when mobileView === "form". */}
+        <section className={`results-panel ${mobileView === "form" ? "mobile-hidden" : ""}`}>
+
+          {/* Back button — only rendered on mobile via CSS */}
+          <button
+            className="mobile-back-btn"
+            onClick={handleReset}
+            aria-label="Back to form"
+          >
+            <ArrowLeft size={14} />
+            Back to form
+          </button>
+
           {/* Priority 1: Error state */}
           {error && (
             <div className="results-content">
@@ -143,7 +161,7 @@ export default function App() {
           {/* Priority 3: Success state with results */}
           {!error && !loading && result && (
             <div className="results-content">
-              {/* Tab bar — pinned, never scrolls */}
+              {/* Tab bar */}
               <div className="tab-bar">
                 {TABS.map((tab) => (
                   <button
@@ -165,7 +183,7 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Tab content — independently scrollable */}
+              {/* Tab content */}
               <div className="tab-content">
                 {activeTab === "summary" && (
                   <SummaryCard
@@ -189,7 +207,11 @@ export default function App() {
                   <RouteInstructions instructions={result.route_instructions} />
                 )}
                 {activeTab === "eld" && (
-                  <ELDLogSheet logs={result.eld_logs} driverInfo={result.driver_info} />
+                  <ELDLogSheet
+                    logs={result.eld_logs}
+                    driverInfo={result.driver_info}
+                    totalDistanceMiles={result.summary.total_distance_miles}
+                  />
                 )}
               </div>
             </div>

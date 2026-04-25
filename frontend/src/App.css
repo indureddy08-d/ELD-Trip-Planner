@@ -216,7 +216,106 @@ body { background: var(--c-bg); color: var(--c-text); font-family: var(--font); 
   min-height: calc(100vh - 56px);
 }
 @media (max-width: 960px) {
-  .app-main { grid-template-columns: 1fr; }
+  /* ── Mobile/tablet: completely flat document flow ──────────────────────
+     The desktop layout uses a flex+grid+overflow chain that requires every
+     ancestor to have a known height. On mobile we abandon that entirely and
+     use plain block layout so the browser's normal document scroll works.
+  ── */
+
+  html, body {
+    height: auto !important;
+    overflow: auto !important;
+  }
+
+  .app {
+    display: block !important;
+    min-height: unset !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .app-main {
+    display: block !important;
+    min-height: unset !important;
+    height: auto !important;
+    grid-template-columns: unset !important;
+  }
+
+  .form-panel {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: unset !important;
+    overflow-y: visible !important;
+    overflow: visible !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--c-border) !important;
+    width: 100% !important;
+  }
+
+  .results-panel {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .results-content {
+    display: block !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  .tab-bar {
+    position: static !important;
+    flex-shrink: unset !important;
+  }
+
+  .tab-content {
+    display: block !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    flex: none !important;
+  }
+
+  .empty-state {
+    flex: none !important;
+    min-height: unset !important;
+  }
+
+  /* ── Mobile view switching ── */
+  /* .mobile-hidden hides a panel on mobile.
+     On desktop (>960px) this class has no effect — both panels always show. */
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  /* Back button — only visible on mobile */
+  .mobile-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-accent);
+    padding: 10px var(--sp-5);
+    border-bottom: 1px solid var(--c-border-s);
+    width: 100%;
+    transition: color .15s;
+  }
+  .mobile-back-btn:hover { color: var(--c-accent-h); }
 }
 
 /* ── Form panel — flush left sidebar ── */
@@ -475,6 +574,9 @@ body { background: var(--c-bg); color: var(--c-text); font-family: var(--font); 
   min-height: calc(100vh - 56px);
   overflow: hidden;             /* clip — scroll happens inside results-content */
 }
+
+/* Back button — hidden on desktop, shown on mobile via media query */
+.mobile-back-btn { display: none; }
 
 /* ── Results content — tab bar pinned, content scrolls ── */
 .results-content {

@@ -1,100 +1,107 @@
-# ELD Trip Planner – HOS-Compliant Route Planning
+# ELD Trip Planner — HOS-Compliant Route Planning & Driver Log Sheet Generator
 
-## Project Overview
+## Overview
 
-ELD Trip Planner is a full-stack web application that helps plan trucking trips in compliance with FMCSA Hours of Service (HOS) regulations. Given a current location, pickup, and dropoff, the planner calculates route distance and drive time, inserts mandatory 30-minute breaks, sleeper berth resets, and fuel stops where required, and generates FMCSA-format ELD daily log sheets for each day of the trip.
+A full-stack web application for planning commercial truck trips with Hours of Service (HOS) compliance. Given a current location, pickup, and dropoff, the planner calculates a compliant route, schedules mandatory breaks, sleeper berth resets, and fuel stops, then generates printable ELD-style daily log sheets for each day of the trip.
 
-The application is designed for property-carrying drivers operating under the **70-hour / 8-day cycle** (49 CFR Part 395).
+Built for property-carrying drivers operating under the **70-hour / 8-day cycle** (49 CFR Part 395).
 
 ---
 
 ## Key Features
 
-- **HOS-compliant trip planning** — current location, pickup, and dropoff with cycle hours input
-- **Compliance status** — compliant, cycle-low warning, or cycle-exhausted verdict
-- **Route summary** — total distance, on-road days, cycle hours remaining after trip
-- **Live map** — interactive Leaflet/OpenStreetMap route display when `ORS_API_KEY` is configured
-- **Fallback routing** — lookup-table distance estimates when no API key is present; trip planning still works fully
-- **Stops & rests timeline** — every stop in sequence with arrival time, duration, and departure
-- **Route instructions** — step-by-step driving instructions with HOS context
-- **ELD log sheet generation** — FMCSA-format daily logs (49 CFR 395.8) with 24-hour duty grid, hours summary, remarks, and certification footer
-- **Print / Save as PDF** — single-page landscape PDF output per log day
-- **Driver & log metadata** — driver name, carrier, office address, vehicle numbers, co-driver, shipper & commodity
-- **Demo scenarios** — four preloaded test cases covering short haul, break required, fuel stop, and cycle exhausted
+- Trip planning with current location, pickup, and dropoff inputs
+- 70-hour / 8-day cycle hours input and tracking
+- HOS compliance checking with compliant / cycle-low / cycle-exhausted status
+- Automatic 30-minute break scheduling after 8 cumulative driving hours
+- Sleeper berth and rest reset handling (full 10h and split provision)
+- Fuel stop planning every 1,000 miles
+- Route summary with total distance, on-road days, and cycle hours remaining
+- Stop-by-stop timeline with arrival times, durations, and departures
+- Step-by-step route instructions with HOS context
+- Live map route display using OpenRouteService when `ORS_API_KEY` is configured
+- Fallback lookup-table routing when `ORS_API_KEY` is not set — trip planning still works fully
+- ELD-style daily log sheet generation (24-hour duty grid, hours summary, remarks, certification)
+- Print / Save as PDF support for ELD log sheets
+- Recent trip history stored locally in the browser
+- Optional live session tracker — separate from trip planning and ELD generation
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React, Vite, JavaScript, CSS |
-| Map | Leaflet, OpenStreetMap |
-| Backend | Django, Django REST Framework, Python |
-| Routing | OpenRouteService API with fallback provider |
-| Database | SQLite (local development) |
+**Frontend**
+- React
+- Vite
+- Leaflet / OpenStreetMap
+- CSS
+
+**Backend**
+- Django
+- Django REST Framework
+- SQLite (local development)
+- PostgreSQL-ready production settings
+- OpenRouteService API integration with fallback provider
 
 ---
 
 ## Project Structure
 
 ```
-DriverLogBook/
-├── frontend/
-│   ├── src/
-│   │   ├── api/            # API client (tripApi.js)
-│   │   ├── components/     # UI components
-│   │   │   ├── results/    # Summary, map, timeline, instructions, ELD sheets
-│   │   │   ├── history/    # Recent trips panel and preview modal
-│   │   │   ├── TripForm.jsx
-│   │   │   └── HeaderDutyControl.jsx
-│   │   ├── hooks/          # useTripPlanner, useRouteData, useDutySession, useRecentTrips
-│   │   └── utils/          # Formatters
-│   └── vite.config.js
-│
-└── backend/
-    ├── trips/              # Trip model, HOS planner, serializers, views, URLs
-    ├── compliance/         # HOS rules engine
-    ├── routing/            # ORS API provider and fallback lookup table
-    ├── logs/               # ELD log model
-    └── core/               # Django settings, URLs, WSGI/ASGI
+ELD-Trip-Planner/
+├── backend/          # Django REST API — HOS engine, ELD generator, routing
+├── frontend/         # React app — trip form, results tabs, ELD log sheets
+├── README.md
+└── .gitignore
 ```
+
+**`backend/`** contains the Django project with apps for trip planning (`trips`), HOS rules (`compliance`), ELD log generation (`logs`), and routing (`routing`).
+
+**`frontend/`** contains the React application with components for the trip form, summary, map, stops timeline, route instructions, and ELD log sheets.
 
 ---
 
-## Setup Instructions
+## Environment Variables
 
-### Backend
+The backend requires a `.env` file at `backend/.env`. This file must **not** be committed to version control.
 
-```bash
+A template is provided at `backend/.env.example`. Copy it and fill in the values before running the server.
+
+| Variable | Required | Description |
+|---|---|---|
+| `SECRET_KEY` | Yes | Django secret key |
+| `DJANGO_ENV` | Yes | Set to `local` for development |
+| `ALLOWED_HOSTS` | Production | Comma-separated allowed hostnames |
+| `CORS_ALLOWED_ORIGINS` | Production | Comma-separated allowed origins |
+| `ORS_API_KEY` | Optional | OpenRouteService API key |
+
+**`ORS_API_KEY` is optional.** Without it, the app uses a built-in lookup table for distances and trip planning works fully. Live map coordinates and route polylines require a valid key. Free keys are available at [openrouteservice.org](https://openrouteservice.org/dev/#/signup).
+
+---
+
+## Backend Setup
+
+Run these commands in Windows PowerShell:
+
+```powershell
 cd backend
-
-# Create and activate virtual environment
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS / Linux
-
-# Install dependencies
+.\venv\Scripts\activate
 pip install -r requirements.txt
-
-# Run database migrations
+copy .env.example .env
 python manage.py migrate
-
-# Start the development server
 python manage.py runserver
 ```
 
-The API will be available at `http://127.0.0.1:8000/api/`.
+The API will be available at `http://127.0.0.1:8000`.
 
-### Frontend
+---
 
-```bash
+## Frontend Setup
+
+```powershell
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
 
@@ -102,47 +109,38 @@ The app will be available at `http://localhost:5173`.
 
 ---
 
-## Environment Variables
+## Running the Full App
 
-Create a `.env` file inside the `backend/` directory. A template is provided at `backend/.env.example`.
+1. Start the backend first: `python manage.py runserver` (from `backend/` with venv active)
+2. Start the frontend: `npm run dev` (from `frontend/`)
+3. Open `http://localhost:5173` in your browser
 
-| Variable | Description |
-|---|---|
-| `SECRET_KEY` | Django secret key |
-| `DJANGO_ENV` | Set to `local` for development |
-| `ORS_API_KEY` | OpenRouteService API key (optional) |
-
-### ORS API Key
-
-The `ORS_API_KEY` enables live route coordinates and polyline rendering on the map tab. Without it, the application falls back to a lookup-table provider that estimates distances between major cities. **Trip planning, HOS calculations, and ELD log generation all work fully without the key** — only the interactive map display requires it.
-
-```
-ORS_API_KEY=your_openrouteservice_api_key_here
-```
-
-A free API key is available at [openrouteservice.org](https://openrouteservice.org/dev/#/signup).
+The frontend expects the backend at `http://127.0.0.1:8000`. Both must be running for trip planning to work.
 
 ---
 
-## How to Use
+## Testing
 
-1. Enter **Current Location**, **Pickup**, and **Dropoff** (City, State format)
-2. Enter **Cycle Hours Used** — hours already consumed in the current 70h/8-day cycle
-3. Optionally expand **Driver & Log Info** and fill in driver name, carrier, vehicle numbers, and shipper details for personalized ELD output
-4. Click **Plan Trip**
-5. Review the results across five tabs:
-   - **Summary** — compliance verdict, key metrics, and planning assumptions
-   - **Map & Route** — interactive route map with leg breakdown
-   - **Stops & Rests** — full stop-by-stop timeline
-   - **Route Instructions** — step-by-step instructions with HOS context
-   - **ELD Log Sheets** — FMCSA-format daily logs
-6. On the ELD Log Sheets tab, click **Print / Save as PDF** to export
+**Backend**
+
+```powershell
+cd backend
+python manage.py test
+```
+
+**Frontend**
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+```
 
 ---
 
 ## Demo Scenarios
 
-Four preloaded scenarios are available in the sidebar under **Demo scenarios**:
+Four built-in demo scenarios are available in the sidebar under **Demo scenarios**:
 
 | Scenario | Description |
 |---|---|
@@ -151,46 +149,32 @@ Four preloaded scenarios are available in the sidebar under **Demo scenarios**:
 | **Fuel Stop** | ~1,100 mi, forces a mid-route fuel stop |
 | **Cycle Exhausted** | 70h used at departure, shows cycle-limit warning |
 
----
-
-## HOS Assumptions
-
-| Rule | Value |
-|---|---|
-| Cycle | 70-hour / 8-day (property-carrying) |
-| Driving limit | 11 hours per shift |
-| On-duty window | 14 hours per shift |
-| Mandatory break | 30 minutes off-duty after 8 cumulative driving hours |
-| Pickup / dropoff | 1 hour on-duty (not driving) each |
-| Fuel stop interval | Every 1,000 miles |
-| Speed estimate | 55 mph fixed (HOS simulation) |
-| Route API time | Shown separately as estimated real-world driving time |
-| Sleeper berth reset | Full 10-hour reset; split sleeper provision supported (49 CFR 395.1(g)) |
+Click any demo button to pre-fill the form and run the planner immediately.
 
 ---
 
-## Final Output
+## Print / PDF
 
-A completed trip plan produces:
-
-- **Summary dashboard** — compliance status, total distance, days on road, cycle remaining
-- **Interactive route map** — polyline route with waypoint markers (requires ORS API key)
-- **Stops & rests timeline** — every stop with type, location, timing, and duration
-- **Route instructions** — numbered steps with day/time, distance, and HOS context
-- **ELD daily log sheets** — one FMCSA-format log per day, including 24-hour duty grid, hours totals, remarks, driver signature block, and certification statement
-- **Printable PDF** — landscape Letter format, one log per page
+ELD log sheets can be printed or saved as PDF directly from the **ELD Log Sheets** tab. Click **Print / Save as PDF** to open the browser print dialog. Each log day prints on one landscape Letter page.
 
 ---
 
-## Limitations / Notes
+## Important Notes
 
-- This is a **planning and educational project**. It is not a certified ELD device and does not replace official telematics equipment.
-- Live route accuracy depends on the OpenRouteService API. Fallback distances are estimates based on a lookup table and may not reflect actual road distances.
-- HOS calculations use a fixed 55 mph speed estimate. Actual drive times will vary.
-- Real-world compliance must be verified against official FMCSA guidance, carrier policy, and applicable state regulations.
+- This project is for planning, demonstration, and educational purposes.
+- It is not a certified ELD device and does not replace official telematics equipment.
+- The **Session Tracker** in the header is an optional live duty timer only. It is separate from trip planning and ELD log generation and does not affect any calculated output.
+- Production use would require verified routing data, legal review, and integration with a certified ELD system compliant with FMCSA regulations.
+- Route distances and drive times are estimates. Actual road conditions, traffic, and carrier policies will vary.
 
 ---
 
-## Author
+## Final Submission Checklist
 
-Developed by: [Your Name]
+- [ ] Backend tests pass — `python manage.py test`
+- [ ] Frontend lint passes — `npm run lint`
+- [ ] Frontend build passes — `npm run build`
+- [ ] `backend/.env` is not committed to version control
+- [ ] `ORS_API_KEY` is stored only in the local `.env` or production environment
+- [ ] All four demo scenarios tested and produce results
+- [ ] PDF export verified from the ELD Log Sheets tab

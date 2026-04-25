@@ -13,14 +13,10 @@ export function useRouteData(form) {
   const [error, setError] = useState(null);
 
   const { current_location, pickup_location, dropoff_location } = form;
-  const ready = current_location.trim() && pickup_location.trim() && dropoff_location.trim();
+  const ready = !!(current_location.trim() && pickup_location.trim() && dropoff_location.trim());
 
   useEffect(() => {
-    if (!ready) {
-      setRouteData(null);
-      setError(null);
-      return;
-    }
+    if (!ready) return;
 
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -42,6 +38,12 @@ export function useRouteData(form) {
 
     return () => clearTimeout(timer);
   }, [current_location, pickup_location, dropoff_location, ready]);
+
+  // When not ready, suppress any stale data from a previous fetch.
+  // Returning null here avoids calling setState inside an effect.
+  if (!ready) {
+    return { routeData: null, loading: false, error: null };
+  }
 
   return { routeData, loading, error };
 }

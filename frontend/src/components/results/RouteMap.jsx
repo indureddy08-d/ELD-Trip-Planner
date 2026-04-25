@@ -140,7 +140,7 @@ export default function RouteMap({ routeData, loading, error }) {
 
   if (!routeData) return null;
 
-  const { legs, total_distance_miles, total_duration_hours, provider, from_cache } = routeData;
+  const { legs, total_distance_miles, total_duration_hours, from_cache } = routeData;
 
   return (
     <div className="route-map-wrap">

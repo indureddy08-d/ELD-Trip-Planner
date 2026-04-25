@@ -333,7 +333,7 @@ function PrintToolbar({ logCount }) {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export default function ELDLogSheet({ logs, driverInfo }) {
+export default function ELDLogSheet({ logs, driverInfo, totalDistanceMiles }) {
   if (!logs?.length) {
     return (
       <div className="eld-empty">
@@ -342,10 +342,26 @@ export default function ELDLogSheet({ logs, driverInfo }) {
     );
   }
 
+  // Use the summary's authoritative total_distance_miles to avoid rounding
+  // discrepancies between the route-API distance (summary) and the
+  // simulation-derived distance (ELD generator: hours × 55 mph).
+  //
+  // For a single-day trip: the one log gets the full summary distance.
+  // For multi-day trips: distribute proportionally by each day's raw miles
+  // so the per-day values still add up to the correct total.
+  const rawTotal = logs.reduce((sum, log) => sum + (log.total_miles || 0), 0);
+  const authoritative = totalDistanceMiles != null ? totalDistanceMiles : rawTotal;
+
+  const correctedLogs = logs.map((log) => {
+    if (rawTotal === 0) return log;
+    const share = (log.total_miles || 0) / rawTotal;
+    return { ...log, total_miles: authoritative * share };
+  });
+
   return (
     <div className="eld-logs" data-print-target="eld">
       <PrintToolbar logCount={logs.length} />
-      {logs.map((log) => (
+      {correctedLogs.map((log) => (
         <LogCard key={log.day_number} log={log} driverInfo={driverInfo} />
       ))}
     </div>
